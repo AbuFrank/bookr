@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useReducer } from 'react';
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -12,6 +12,11 @@ import type { LoginCredentials, SignUpData } from '../firebase/authService';
 
 
 import { listenToAuthState } from '../firebase/firebase';
+import { transactionReducer } from '../reducer/transactionReducer';
+import { createAccount, createTransaction, loadAccounts, loadTransactions } from '../firebase/crud';
+import { TransactionActions, type FirestoreTransaction } from '../types/transactionTypes';
+import accountReducer from '../reducer/accountReducer';
+import { AccountActions, type FirestoreAccount } from '../types/accountTypes';
 
 interface User {
   uid: string;
@@ -30,6 +35,14 @@ interface AuthContextType {
   register: (userData: SignUpData) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
+  transactions: FirestoreTransaction[];
+  addTransaction: (transaction: FirestoreTransaction) => void;
+  updateTransaction: (updatedTransaction: FirestoreTransaction) => void;
+  deleteTransaction: (transactionId: string) => void;
+  accounts: FirestoreAccount[];
+  addAccount: (acount: FirestoreAccount) => void;
+  updateAccount: (updatedAccount: FirestoreAccount) => void;
+  deleteAccount: (accountId: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -50,6 +63,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
+  const [transactionState, dispatchTransaction] = useReducer(transactionReducer, { transactions: [] });
+  const [accountState, dispatchAccount] = useReducer(accountReducer, { accounts: [] })
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -64,6 +80,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           emailVerified: firebaseUser.emailVerified,
           providerId: firebaseUser.providerId
         });
+        const initialTransactions = loadTransactions(firebaseUser.uid);
+        dispatchTransaction({ type: TransactionActions.SET_TRANSACTIONS, payload: initialTransactions })
+        const initialAccounts = loadAccounts(firebaseUser.uid);
+        dispatchAccount({ type: AccountActions.SET_ACCOUNTS, payload: initialAccounts })
         setIsAuthenticated(true);
         setLoading(false);
       } else {
@@ -76,6 +96,48 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     return unsubscribe;
   }, []);
+
+  const addTransaction = async (transaction: FirestoreTransaction) => {
+    setLoading(true)
+    const newId = await createTransaction(transaction);
+    dispatchTransaction({ type: TransactionActions.ADD_TRANSACTION, payload: { ...transaction, id: newId } });
+    setLoading(false)
+  };
+
+  const updateTransaction = async (updatedTransaction: FirestoreTransaction) => {
+    setLoading(true)
+    await updateTransaction(updatedTransaction);
+    dispatchTransaction({ type: TransactionActions.UPDATE_TRANSACTION, payload: updatedTransaction });
+    setLoading(false)
+  };
+
+  const deleteTransaction = async (transactionId: string) => {
+    setLoading(true)
+    await deleteTransaction(transactionId)
+    dispatchTransaction({ type: TransactionActions.DELETE_TRANSACTION, payload: transactionId });
+    setLoading(false)
+  };
+
+  const addAccount = async (account: FirestoreAccount) => {
+    setLoading(true)
+    const newId = await createAccount(account);
+    dispatchAccount({ type: AccountActions.ADD_ACCOUNT, payload: { ...account, id: newId } });
+    setLoading(false)
+  };
+
+  const updateAccount = async (updatedAccount: FirestoreAccount) => {
+    setLoading(true)
+    await updateAccount(updatedAccount);
+    dispatchAccount({ type: AccountActions.UPDATE_ACCOUNT, payload: updatedAccount });
+    setLoading(false)
+  };
+
+  const deleteAccount = async (accountId: string) => {
+    setLoading(true)
+    await deleteAccount(accountId)
+    dispatchAccount({ type: AccountActions.DELETE_ACCOUNT, payload: accountId });
+    setLoading(false)
+  };
 
   const login = async (credentials: LoginCredentials): Promise<void> => {
     try {
@@ -120,6 +182,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     register,
     loginWithGoogle,
     logout,
+    transactions: transactionState.transactions,
+    addTransaction,
+    updateTransaction,
+    deleteTransaction,
+    accounts: accountState.accounts,
+    addAccount,
+    updateAccount,
+    deleteAccount,
   };
 
   return (

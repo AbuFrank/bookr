@@ -1,8 +1,8 @@
 import React from 'react';
-import type { Transaction } from '../types/transaction';
+import type { FirestoreTransaction } from '../types/transactionTypes';
 
 interface TransactionListProps {
-  transactions: Transaction[];
+  transactions: FirestoreTransaction[];
   onDelete: (id: string) => void;
 }
 
@@ -40,9 +40,9 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, onDelet
         </thead>
         <tbody className="bg-white divide-y divide-gray-200">
           {transactions.map((transaction) => (
-            <tr key={transaction.accountName + transaction.value} className="hover:bg-gray-50">
+            <tr key={transaction.paidTo + transaction.value} className="hover:bg-gray-50">
               <td className="px-6 py-4 whitespace-nowrap">
-                <div className="text-sm font-medium text-gray-900">{transaction.accountName}</div>
+                <div className="text-sm font-medium text-gray-900">{transaction.paidTo}</div>
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
                 <div className="text-sm text-gray-500">{transaction.accountNumber}</div>
@@ -60,7 +60,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, onDelet
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                 <button
-                  onClick={() => onDelete(transaction.accountName + transaction.value)}
+                  onClick={() => onDelete(transaction.paidTo + transaction.value)}
                   className="text-red-600 hover:text-red-900"
                 >
                   Delete

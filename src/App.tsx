@@ -2,7 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider } from './context/authContext';
 import Login from './Login';
 import ProtectedRoute from './components/ProtectedRoute';
-import Transactions from './Transactions';
+import Transactions from './PageTransactions';
 import Unauthorized from './Unauthorized';
 
 function App() {

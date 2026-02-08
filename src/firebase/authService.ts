@@ -1,4 +1,3 @@
-// authService.ts
 import { auth, db, googleProvider } from './firebase';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, signOut, updateProfile } from 'firebase/auth';
