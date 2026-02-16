@@ -6,7 +6,16 @@ export const AccountActions = {
 }
 
 export interface FirestoreAccount {
+  dateCreated: Date;
+  userId: string;
   id: string;
+  accountType: string;
+  accountNumber: string;
+  accountName: string;
+}
+
+
+export interface FormAccountData {
   accountType: string;
   accountNumber: string;
   accountName: string;

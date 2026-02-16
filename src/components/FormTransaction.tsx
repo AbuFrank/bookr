@@ -1,34 +1,55 @@
-import { useState, useEffect } from 'react';
-import type { AccountCreationState, FirestoreTransaction, Transaction } from '../types/transactionTypes';
-import DatePicker from 'react-datepicker';
-import { createTransaction } from '../firebase/crud';
-import { useAuth } from '../context/authContext';
+import type { FirestoreAccount, FormAccountData } from '../types/accountTypes';
+import type { FormEvent } from 'react';
+import type { FormData } from '../types/transactionTypes';
+import { createAccountLabel } from '../helpers/helpers';
+import MyDatePicker from './MyDatePicker';
 
 const labelClass = "block text-sm font-medium text-gray-700 mb-1"
 const inputClass = "w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
 
-interface FormTransactionProps {
-  onSubmit: (transaction: Omit<Transaction, 'id' | 'date'>) => void;
-  onCancel: () => void;
-  initialAccountOptions: string[];
+
+export interface FormTransactionProps {
+  formData: FormData,
+  onTransactionSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onTransactionFormChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
+  onTransactionCancel: () => void;
+  onDateChange: (date: Date | null) => void;
+  accounts: FirestoreAccount[];
+  handleAccountSelect: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+  handleAccountFormChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
+  handleAccountSubmit: () => void;
+  setIsAccountFormToggled: (show: boolean) => void;
+  accountsLoading: Boolean;
+  isAccountFormToggled: Boolean;
+  newAccount: FormAccountData;
+  currentAccount: FirestoreAccount | null;
+  setNewAccount: (newAccount: FormAccountData) => void;
 }
 
-const FormTransaction: React.FC<FormTransactionProps> = ({ onSubmit, onCancel, initialAccountOptions }) => {
-
+const FormTransaction: React.FC<FormTransactionProps> = ({
+  formData,
+  accounts,
+  onTransactionSubmit,
+  onTransactionFormChange,
+  onDateChange,
+  handleAccountFormChange,
+  onTransactionCancel,
+  handleAccountSubmit,
+  setIsAccountFormToggled,
+  isAccountFormToggled,
+  accountsLoading,
+  currentAccount,
+  newAccount,
+  handleAccountSelect,
+}) => {
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={onTransactionSubmit} className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
         <div>
-          <label htmlFor="date" className={labelClass}>Date:</label>
-          <DatePicker
-            selected={formData.date}
-            onChange={handleDateChange}
-            dateFormat="MM/dd/yyyy" // Or your preferred format
-            // placeholder={placeholderText}
-            className={inputClass}
-          />
+          <label htmlFor="date" className={labelClass}>Date</label>
+          <MyDatePicker date={formData.date} onDateChange={onDateChange} />
         </div>
 
         <div>
@@ -37,7 +58,7 @@ const FormTransaction: React.FC<FormTransactionProps> = ({ onSubmit, onCancel, i
             type="text"
             name="checkNumber"
             value={formData.checkNumber}
-            onChange={handleChange}
+            onChange={onTransactionFormChange}
             className={inputClass}
             placeholder="Optional"
           />
@@ -49,7 +70,7 @@ const FormTransaction: React.FC<FormTransactionProps> = ({ onSubmit, onCancel, i
             type="text"
             name="paidTo"
             value={formData.paidTo}
-            onChange={handleChange}
+            onChange={onTransactionFormChange}
             className={inputClass}
             placeholder="e.g., Checking Account"
             required
@@ -60,24 +81,25 @@ const FormTransaction: React.FC<FormTransactionProps> = ({ onSubmit, onCancel, i
           <label className={labelClass}>Account Number</label>
           <select
             name="accountNumber"
-            value={formData.accountNumber}
-            onChange={handleChange}
+            value={currentAccount?.id}
+            onChange={handleAccountSelect}
             className={inputClass}
           >
-            <option value="">Select or Create</option>
-            {accountOptions.map((option) => (
-              <option key={option} value={option}>
-                {option}
+            <option value="">Select an Account</option>
+            {accounts.map((account: FirestoreAccount) => (
+              <option key={account.id} value={account.id}> {/* Use account.id as the value */}
+                {createAccountLabel(account)} {/* Display accountName */}
               </option>
             ))}
           </select>
 
-          {accountCreation.isCreatingAccount && (
+          {isAccountFormToggled && (
             <div className="mt-2">
               <label className={labelClass}>Account Type</label>
               <select
-                value={accountCreation.accountType}
-                onChange={handleAccountTypeChange}
+                name="accountType"
+                value={newAccount.accountType[0]}
+                onChange={handleAccountFormChange}
                 className={inputClass}
               >
                 <option value="">Select Type</option>
@@ -90,8 +112,9 @@ const FormTransaction: React.FC<FormTransactionProps> = ({ onSubmit, onCancel, i
               <label className="block text-sm font-medium text-gray-700 mb-1 mt-2">Account Number</label>
               <input
                 type="number"
-                value={accountCreation.accountNumber}
-                onChange={handleAccountNumberChange}
+                name="accountNumber"
+                value={newAccount.accountNumber}
+                onChange={handleAccountFormChange}
                 className={inputClass}
                 placeholder="Enter Number"
               />
@@ -99,28 +122,37 @@ const FormTransaction: React.FC<FormTransactionProps> = ({ onSubmit, onCancel, i
               <label className="block text-sm font-medium text-gray-700 mb-1 mt-2">Account Name</label>
               <input
                 type="text"
-                value={accountCreation.accountName}
-                onChange={handleAccountNameChange}
+                name="accountName"
+                value={newAccount.accountName}
+                onChange={handleAccountFormChange}
                 className={inputClass}
                 placeholder="Enter Name"
               />
 
               <button
                 type="button"
-                onClick={handleCreateAccount}
+                onClick={() => handleAccountSubmit()}
                 className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-2"
               >
                 Create Account
               </button>
+              <button
+                type="button"
+                onClick={() => setIsAccountFormToggled(false)}
+                className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-2 ml-4"
+              >
+                Cancel
+              </button>
             </div>
           )}
-          <button
+          {!isAccountFormToggled && <button
+            disabled={!!accountsLoading}
             type="button"
-            onClick={() => setAccountCreation(prev => ({ ...prev, isCreatingAccount: true }))}
+            onClick={() => setIsAccountFormToggled(true)}
             className="bg-gray-200 hover:bg-gray-400 text-gray-700 font-bold py-2 px-4 rounded mt-2"
           >
             Create New Account
-          </button>
+          </button>}
         </div>
 
         <div>
@@ -129,7 +161,7 @@ const FormTransaction: React.FC<FormTransactionProps> = ({ onSubmit, onCancel, i
             type="number"
             name="value"
             value={formData.value}
-            onChange={handleChange}
+            onChange={onTransactionFormChange}
             className={inputClass}
             placeholder="0.00"
             min="0"
@@ -143,7 +175,7 @@ const FormTransaction: React.FC<FormTransactionProps> = ({ onSubmit, onCancel, i
           <select
             name="type"
             value={formData.type}
-            onChange={handleChange}
+            onChange={onTransactionFormChange}
             className={inputClass}
           >
             <option value="income">Income</option>
@@ -155,7 +187,7 @@ const FormTransaction: React.FC<FormTransactionProps> = ({ onSubmit, onCancel, i
       <div className="flex justify-end space-x-3 pt-4">
         <button
           type="button"
-          onClick={onCancel}
+          onClick={onTransactionCancel}
           className="btn-secondary"
         >
           Cancel

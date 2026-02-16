@@ -1,12 +1,16 @@
 import React from 'react';
 import type { FirestoreTransaction } from '../types/transactionTypes';
+import { findAccountById } from '../helpers/helpers';
+import type { FirestoreAccount } from '../types/accountTypes';
 
 interface TransactionListProps {
+  accounts: FirestoreAccount[]
   transactions: FirestoreTransaction[];
-  onDelete: (id: string) => void;
+  deleteTransaction: (id: string) => void;
+  transactionsLoading: Boolean;
 }
 
-const TransactionList: React.FC<TransactionListProps> = ({ transactions, onDelete }) => {
+const TransactionList: React.FC<TransactionListProps> = ({ accounts, transactions, deleteTransaction, transactionsLoading }) => {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -45,7 +49,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, onDelet
                 <div className="text-sm font-medium text-gray-900">{transaction.paidTo}</div>
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
-                <div className="text-sm text-gray-500">{transaction.accountNumber}</div>
+                <div className="text-sm text-gray-500">{findAccountById(accounts, transaction.accountId)?.accountName}</div>
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
                 <div className={`text-sm font-medium ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
@@ -60,7 +64,8 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, onDelet
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                 <button
-                  onClick={() => onDelete(transaction.paidTo + transaction.value)}
+                  disabled={!!transactionsLoading}
+                  onClick={() => deleteTransaction(transaction.id)}
                   className="text-red-600 hover:text-red-900"
                 >
                   Delete

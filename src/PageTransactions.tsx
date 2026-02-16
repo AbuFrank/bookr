@@ -4,37 +4,45 @@ import StatCards from './components/StatCards';
 import FormTransaction from './components/FormTransaction';
 import TransactionList from './components/TransactionList';
 import { useAuth } from './context/authContext';
-import type { FirestoreAccount } from './types/accountTypes';
+import type { FirestoreAccount, FormAccountData } from './types/accountTypes';
 import type { FirestoreTransaction } from './types/transactionTypes';
+import { findAccountById, generateFirestoreId } from './helpers/helpers';
 
 const Transactions: React.FC = () => {
   const [formData, setFormData] = useState({
     checkNumber: '',
     date: new Date(),
     paidTo: '',
-    accountNumber: '',
+    accountId: '',
     value: '',
     type: 'income' as 'income' | 'expense'
   });
 
-  const [newAccount, setNewAccount] = useState<FirestoreAccount>({
-    id: 'temp',
+  const [newAccount, setNewAccount] = useState<FormAccountData>({
     accountType: '',
     accountNumber: '',
     accountName: '',
   });
 
-  const { user, accounts, transactions, addTransaction, updateTransaction, deleteTransaction, addAccount, updateAccount, deleteAccount, loading } = useAuth();
+  const [currentAccount, setCurrentAccount] = useState<FirestoreAccount | null>(null)
+
+  const { user, accounts, transactions, addTransaction, deleteTransaction, addAccount, loading, transactionsLoading, accountsLoading } = useAuth();
 
 
-  const handleTransactionChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleTransactionFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleAccountChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleAccountFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setNewAccount(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleAccountSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const { value } = e.target;
+    const selectedAccount = findAccountById(accounts, value)
+    setCurrentAccount(selectedAccount || null)
   };
 
   const handleDateChange = (date: Date | null) => {
@@ -42,45 +50,78 @@ const Transactions: React.FC = () => {
   };
 
   const [showTransactionForm, setShowTransactionForm] = useState(false);
-  const [showNewAccountForm, setShowNewAccountForm] = useState(false);
+  const [isAccountFormToggled, setIsAccountFormToggled] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleTransactionSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (
       formData.paidTo &&
       formData.value &&
-      formData.date
+      formData.date &&
+      formData.type
     ) {
-      onSubmit({
-        paidTo: formData.paidTo,
-        accountNumber: formData.accountNumber,
-        value: parseFloat(formData.value),
-        type: formData.type
-      });
 
       const transactionData: FirestoreTransaction = {
-        id: 'temp',
+        id: generateFirestoreId('transactions'),
         userId: user?.uid || 'unknown',  // Get the user's UID
         checkNumber: formData.checkNumber,
         date: formData.date,
         dateCreated: new Date,
         paidTo: formData.paidTo,
-        accountNumber: formData.accountNumber,
+        accountId: formData.accountId,
         value: parseFloat(formData.value),
         type: formData.type as 'expense' | 'income',
       };
 
       try {
         await addTransaction(transactionData);
-        // Optionally, reset the form after successful submission
         setFormData({
           date: new Date(),
           checkNumber: '',
           paidTo: '',
-          accountNumber: '',
+          accountId: '',
           value: '',
           type: 'expense'
         });
+        setCurrentAccount(null)
+      } catch (error) {
+        console.error('Error submitting transaction:', error);
+      }
+    }
+  };
+
+  const handleAccountSubmit = async () => {
+    // TODO account - prevent duplicate type and number
+    console.log('New Account submit ===> ', {
+      type: newAccount.accountType,
+      number: newAccount.accountNumber,
+      name: newAccount.accountName
+    })
+    if (
+      newAccount.accountType &&
+      newAccount.accountNumber &&
+      newAccount.accountName
+    ) {
+
+      const accountData: FirestoreAccount = {
+        id: generateFirestoreId('accounts'),
+        userId: user?.uid || 'unknown',  // Get the user's UID
+        dateCreated: new Date,
+        accountNumber: newAccount.accountNumber,
+        accountType: newAccount.accountType,
+        accountName: newAccount.accountName
+      };
+
+
+      try {
+        await addAccount(accountData);
+        setNewAccount({
+          accountType: '',
+          accountNumber: '',
+          accountName: '',
+        });
+        setCurrentAccount(accountData)
+        setIsAccountFormToggled(false)
       } catch (error) {
         console.error('Error submitting transaction:', error);
       }
@@ -95,13 +136,13 @@ const Transactions: React.FC = () => {
     );
   }
 
-  const totalIncome = transactions
-    .filter(t => t.type === 'income')
-    .reduce((sum, t) => sum + t.value, 0);
+  const totalIncome =
+    transactions.filter(t => t.type === 'income')
+      .reduce((sum, t) => sum + t.value, 0);
 
-  const totalExpenses = transactions
-    .filter(t => t.type === 'expense')
-    .reduce((sum, t) => sum + t.value, 0);
+  const totalExpenses =
+    transactions.filter(t => t.type === 'expense')
+      .reduce((sum, t) => sum + t.value, 0);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -128,18 +169,35 @@ const Transactions: React.FC = () => {
             </button>
           </div>
 
-          {showTransactionForm ? (
+          {showTransactionForm && (
             <FormTransaction
-              onSubmit={handleSubmit}
-              onCancel={() => setShowTransactionForm(false)}
-              initialAccountOptions={[]}
-            />
-          ) : (
-            <TransactionList
-              transactions={transactions}
-              onDelete={deleteTransaction}
+              formData={formData}
+              onTransactionSubmit={handleTransactionSubmit}
+              onTransactionFormChange={handleTransactionFormChange}
+              onTransactionCancel={() => setShowTransactionForm(false)}
+              onDateChange={handleDateChange}
+              handleAccountSelect={handleAccountSelect}
+              setIsAccountFormToggled={setIsAccountFormToggled}
+              accountsLoading={accountsLoading}
+              handleAccountSubmit={handleAccountSubmit}
+              handleAccountFormChange={handleAccountFormChange}
+              accounts={accounts}
+              currentAccount={currentAccount}
+              isAccountFormToggled={isAccountFormToggled}
+              newAccount={newAccount}
+              setNewAccount={setNewAccount}
             />
           )}
+
+        </div>
+        <div className="mt-8 bg-white rounded-xl shadow-md p-6">
+          <TransactionList
+            accounts={accounts}
+            transactions={transactions}
+            deleteTransaction={deleteTransaction}
+            transactionsLoading={transactionsLoading}
+          />
+
         </div>
       </main>
     </div>

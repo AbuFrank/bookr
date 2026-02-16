@@ -1,12 +1,12 @@
-// export interface Transaction {
-//   id: string;
-//   paidTo: string;
-//   accountNumber: string;
-//   checkNumber?: string;
-//   value: number;
-//   type: 'income' | 'expense';
-//   date: Date;
-// }
+
+export interface FormData {
+  accountId: string,
+  checkNumber: string,
+  paidTo: string,
+  value: string,
+  date: Date,
+  type: 'income' | 'expense'
+}
 
 export interface FirestoreTransaction {
   id: string;
@@ -15,7 +15,7 @@ export interface FirestoreTransaction {
   date: Date;
   dateCreated: Date;
   paidTo: string;
-  accountNumber: string;
+  accountId: string;
   value: number;
   type: 'expense' | 'income';
 }

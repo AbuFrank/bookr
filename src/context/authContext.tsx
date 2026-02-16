@@ -13,7 +13,7 @@ import type { LoginCredentials, SignUpData } from '../firebase/authService';
 
 import { listenToAuthState } from '../firebase/firebase';
 import { transactionReducer } from '../reducer/transactionReducer';
-import { createAccount, createTransaction, loadAccounts, loadTransactions } from '../firebase/crud';
+import { createAccount, createTransaction, deleteFirestoreAccount, deleteFirestoreTransaction, loadAccounts, loadTransactions, updateFirestoreAccount, updateFirestoreTransaction } from '../firebase/crud';
 import { TransactionActions, type FirestoreTransaction } from '../types/transactionTypes';
 import accountReducer from '../reducer/accountReducer';
 import { AccountActions, type FirestoreAccount } from '../types/accountTypes';
@@ -40,6 +40,8 @@ interface AuthContextType {
   updateTransaction: (updatedTransaction: FirestoreTransaction) => void;
   deleteTransaction: (transactionId: string) => void;
   accounts: FirestoreAccount[];
+  accountsLoading: boolean;
+  transactionsLoading: boolean;
   addAccount: (acount: FirestoreAccount) => void;
   updateAccount: (updatedAccount: FirestoreAccount) => void;
   deleteAccount: (accountId: string) => void;
@@ -63,6 +65,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
+  const [accountsLoading, setAccountsLoading] = useState<boolean>(false);
+  const [transactionsLoading, setTransactionsLoading] = useState<boolean>(false);
   const [transactionState, dispatchTransaction] = useReducer(transactionReducer, { transactions: [] });
   const [accountState, dispatchAccount] = useReducer(accountReducer, { accounts: [] })
 
@@ -80,12 +84,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           emailVerified: firebaseUser.emailVerified,
           providerId: firebaseUser.providerId
         });
-        const initialTransactions = loadTransactions(firebaseUser.uid);
-        dispatchTransaction({ type: TransactionActions.SET_TRANSACTIONS, payload: initialTransactions })
-        const initialAccounts = loadAccounts(firebaseUser.uid);
-        dispatchAccount({ type: AccountActions.SET_ACCOUNTS, payload: initialAccounts })
         setIsAuthenticated(true);
-        setLoading(false);
+        Promise.all([loadTransactions(firebaseUser.uid), loadAccounts(firebaseUser.uid)])
+          .then(([initialTransactions, initialAccounts]) => {
+            dispatchTransaction({ type: TransactionActions.SET_TRANSACTIONS, payload: initialTransactions })
+            dispatchAccount({ type: AccountActions.SET_ACCOUNTS, payload: initialAccounts })
+            setLoading(false);
+          })
       } else {
         // User is signed out
         setUser(null);
@@ -98,45 +103,46 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   const addTransaction = async (transaction: FirestoreTransaction) => {
-    setLoading(true)
-    const newId = await createTransaction(transaction);
-    dispatchTransaction({ type: TransactionActions.ADD_TRANSACTION, payload: { ...transaction, id: newId } });
-    setLoading(false)
+    setTransactionsLoading(true)
+    await createTransaction(transaction);
+    dispatchTransaction({ type: TransactionActions.ADD_TRANSACTION, payload: transaction });
+    setTransactionsLoading(false)
   };
 
   const updateTransaction = async (updatedTransaction: FirestoreTransaction) => {
-    setLoading(true)
-    await updateTransaction(updatedTransaction);
+    setTransactionsLoading(true)
+    await updateFirestoreTransaction(updatedTransaction);
     dispatchTransaction({ type: TransactionActions.UPDATE_TRANSACTION, payload: updatedTransaction });
-    setLoading(false)
+    setTransactionsLoading(false)
   };
 
   const deleteTransaction = async (transactionId: string) => {
-    setLoading(true)
-    await deleteTransaction(transactionId)
+    setTransactionsLoading(true)
+    console.log('deleteTransaction running????????')
+    await deleteFirestoreTransaction(transactionId)
     dispatchTransaction({ type: TransactionActions.DELETE_TRANSACTION, payload: transactionId });
-    setLoading(false)
+    setTransactionsLoading(false)
   };
 
   const addAccount = async (account: FirestoreAccount) => {
-    setLoading(true)
-    const newId = await createAccount(account);
-    dispatchAccount({ type: AccountActions.ADD_ACCOUNT, payload: { ...account, id: newId } });
-    setLoading(false)
+    setAccountsLoading(true)
+    await createAccount(account);
+    dispatchAccount({ type: AccountActions.ADD_ACCOUNT, payload: account });
+    setAccountsLoading(false)
   };
 
   const updateAccount = async (updatedAccount: FirestoreAccount) => {
-    setLoading(true)
-    await updateAccount(updatedAccount);
+    setAccountsLoading(true)
+    await updateFirestoreAccount(updatedAccount);
     dispatchAccount({ type: AccountActions.UPDATE_ACCOUNT, payload: updatedAccount });
-    setLoading(false)
+    setAccountsLoading(false)
   };
 
   const deleteAccount = async (accountId: string) => {
-    setLoading(true)
-    await deleteAccount(accountId)
+    setAccountsLoading(true)
+    await deleteFirestoreAccount(accountId)
     dispatchAccount({ type: AccountActions.DELETE_ACCOUNT, payload: accountId });
-    setLoading(false)
+    setAccountsLoading(false)
   };
 
   const login = async (credentials: LoginCredentials): Promise<void> => {
@@ -186,7 +192,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     addTransaction,
     updateTransaction,
     deleteTransaction,
+    transactionsLoading,
     accounts: accountState.accounts,
+    accountsLoading,
     addAccount,
     updateAccount,
     deleteAccount,

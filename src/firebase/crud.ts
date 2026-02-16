@@ -6,9 +6,7 @@ import { collection, addDoc, query, where, getDocs, updateDoc, deleteDoc, doc } 
 export async function createTransaction(transaction: FirestoreTransaction) {
   try {
     const transactionsCollection = collection(db, 'transactions'); // 'transactions' is the collection name
-    const newDocRef = await addDoc(transactionsCollection, transaction);
-    console.log('Transaction saved successfully! ID ===> ', newDocRef.id);
-    return newDocRef.id;
+    await addDoc(transactionsCollection, transaction);
   } catch (error) {
     console.error('Error saving transaction:', error);
   }
@@ -29,17 +27,17 @@ export async function loadTransactions(userId: string) {
   }
 };
 
-export async function updateTransaction(transaction: FirestoreTransaction) {
+export async function updateFirestoreTransaction(transaction: FirestoreTransaction) {
   try {
     const transactionDocRef = doc(db, 'transactions', transaction.id);
-    await updateDoc(transactionDocRef, transaction);
+    await updateDoc(transactionDocRef, { ...transaction });
     console.log('Transaction updated successfully!');
   } catch (error) {
     console.error('Error updating transaction:', error);
   }
 }
 
-export async function deleteTransaction(transactionId: string) {
+export async function deleteFirestoreTransaction(transactionId: string) {
   try {
     const transactionDocRef = doc(db, 'transactions', transactionId);
     await deleteDoc(transactionDocRef);
@@ -53,9 +51,9 @@ export async function deleteTransaction(transactionId: string) {
 
 export async function createAccount(account: FirestoreAccount) {
   try {
+    console.log('creating a new account ====>', account)
     const accountsCollection = collection(db, 'accounts');
-    await addDoc(accountsCollection, account);
-    console.log('Account created successfully!');
+    await addDoc(accountsCollection, { ...account });
   } catch (error) {
     console.error('Error creating account:', error);
   }
@@ -77,17 +75,17 @@ export async function loadAccounts(userId: string) {
   }
 }
 
-export async function updateAccount(account: FirestoreAccount) {
+export async function updateFirestoreAccount(account: FirestoreAccount) {
   try {
     const accountDocRef = doc(db, 'accounts', account.id);
-    await updateDoc(accountDocRef, account);
+    await updateDoc(accountDocRef, { ...account });
     console.log('Account updated successfully!');
   } catch (error) {
     console.error('Error updating account:', error);
   }
 }
 
-export async function deleteAccount(accountId: string) {
+export async function deleteFirestoreAccount(accountId: string) {
   try {
     const accountDocRef = doc(db, 'accounts', accountId);
     await deleteDoc(accountDocRef);
