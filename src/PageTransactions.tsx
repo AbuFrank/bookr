@@ -3,10 +3,11 @@ import Header from './components/Header';
 import StatCards from './components/StatCards';
 import FormTransaction from './components/FormTransaction';
 import TransactionList from './components/TransactionList';
-import { useAuth } from './context/authContext';
+import { useAuth } from './hooks/useAuth';
 import type { FirestoreAccount, FormAccountData } from './types/accountTypes';
 import type { FirestoreTransaction } from './types/transactionTypes';
-import { findAccountById, generateFirestoreId } from './helpers/helpers';
+import { findAccountById, generateFirestoreId } from './lib/firestore';
+import ReportGenerator from './components/ReportGenerator';
 
 const Transactions: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -199,6 +200,7 @@ const Transactions: React.FC = () => {
           />
 
         </div>
+        <ReportGenerator />
       </main>
     </div>
   );

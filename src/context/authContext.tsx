@@ -1,15 +1,10 @@
-import { createContext, useContext, useState, useEffect, useReducer } from 'react';
+import { createContext, useState, useEffect, useReducer } from 'react';
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  signInWithEmail,
-  signUpWithEmail,
   signInWithGoogle,
   signOutUser,
 } from '../firebase/authService';
-
-import type { LoginCredentials, SignUpData } from '../firebase/authService';
-
 
 import { listenToAuthState } from '../firebase/firebase';
 import { transactionReducer } from '../reducer/transactionReducer';
@@ -17,6 +12,7 @@ import { createAccount, createTransaction, deleteFirestoreAccount, deleteFiresto
 import { TransactionActions, type FirestoreTransaction } from '../types/transactionTypes';
 import accountReducer from '../reducer/accountReducer';
 import { AccountActions, type FirestoreAccount } from '../types/accountTypes';
+import googleDriveAPI from '../lib/googleDriveClient';
 
 interface User {
   uid: string;
@@ -31,8 +27,6 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   loading: boolean;
-  login: (credentials: LoginCredentials) => Promise<void>;
-  register: (userData: SignUpData) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
   transactions: FirestoreTransaction[];
@@ -47,15 +41,7 @@ interface AuthContextType {
   deleteAccount: (accountId: string) => void;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-export const useAuth = (): AuthContextType => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -76,6 +62,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const unsubscribe = listenToAuthState((firebaseUser) => {
       if (firebaseUser) {
         // User is signed in
+        googleDriveAPI.setCurrentUser(firebaseUser.uid);
         setUser({
           uid: firebaseUser.uid,
           email: firebaseUser.email,
@@ -93,6 +80,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           })
       } else {
         // User is signed out
+        googleDriveAPI.setCurrentUser(null);
         setUser(null);
         setIsAuthenticated(false);
         setLoading(false);
@@ -145,23 +133,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setAccountsLoading(false)
   };
 
-  const login = async (credentials: LoginCredentials): Promise<void> => {
-    try {
-      await signInWithEmail(credentials.email, credentials.password);
-    } catch (error: any) {
-      throw new Error(error.message || 'Login failed');
-    }
-  };
-
-  const register = async (userData: SignUpData): Promise<void> => {
-    try {
-      const newUser = await signUpWithEmail(userData.email, userData.password, userData.displayName);
-      setUser(newUser)
-    } catch (error: any) {
-      throw new Error(error.message || 'Registration failed');
-    }
-  };
-
   const loginWithGoogle = async (): Promise<void> => {
     try {
       await signInWithGoogle();
@@ -184,8 +155,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     user,
     isAuthenticated,
     loading,
-    login,
-    register,
     loginWithGoogle,
     logout,
     transactions: transactionState.transactions,

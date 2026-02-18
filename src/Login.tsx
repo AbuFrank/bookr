@@ -1,41 +1,13 @@
-import React, { useState } from 'react';
-import FormSignUp from './components/FormSignUp';
-import FormSignIn from './components/FormSignIn';
-import { useAuth } from './context/authContext';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from './hooks/useAuth';
 
 const Login = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [displayName, setDisplayName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [isSignUp, setIsSignUp] = useState(false);
 
-  const { login, loginWithGoogle, register } = useAuth();
+  const { loginWithGoogle } = useAuth();
   const navigate = useNavigate();
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
-
-    try {
-      if (isSignUp) {
-        // Use your existing signup function
-        await register({ email, password, displayName })
-        navigate('/transactions')
-      } else {
-        // Use standard sign in
-        await login({ email, password });
-        navigate('/transactions');
-      }
-    } catch (err: any) {
-      setError(err.message || 'Failed to login');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleGoogleLogin = async () => {
     setLoading(true);
@@ -61,11 +33,8 @@ const Login = () => {
             </svg>
           </div>
           <h1 className="text-3xl font-bold text-gray-800">
-            {isSignUp ? 'Create Account' : 'Welcome Back'}
+            Sign in with Google.
           </h1>
-          <p className="text-gray-600 mt-2">
-            {isSignUp ? 'Sign up to get started' : 'Sign in to your account'}
-          </p>
         </div>
 
         {error && (
@@ -83,41 +52,7 @@ const Login = () => {
           </div>
         )}
 
-        {isSignUp ? (
-          <FormSignUp
-            handleSubmit={handleSubmit}
-            onError={setError}
-            setLoading={setLoading}
-            loading={loading}
-            email={email}
-            setEmail={setEmail}
-            password={password}
-            setPassword={setPassword}
-            displayName={displayName}
-            setDisplayName={setDisplayName}
-          />
-        ) : (
-          <FormSignIn
-            handleSubmit={handleSubmit}
-            onError={setError}
-            setLoading={setLoading}
-            loading={loading}
-            email={email}
-            setEmail={setEmail}
-            password={password}
-            setPassword={setPassword}
-          />
-        )}
-
         <div className="mt-8">
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-gray-500">Or continue with</span>
-            </div>
-          </div>
 
           <div className="mt-6">
             <button
@@ -136,19 +71,7 @@ const Login = () => {
           </div>
         </div>
 
-        <div className="mt-8 text-center">
-          <p className="text-sm text-gray-600">
-            {isSignUp
-              ? 'Already have an account?'
-              : "Don't have an account?"}
-            <button
-              onClick={() => setIsSignUp(!isSignUp)}
-              className="ml-1 font-medium text-blue-600 hover:text-blue-500 transition duration-200"
-            >
-              {isSignUp ? 'Sign in' : 'Sign up'}
-            </button>
-          </p>
-        </div>
+
       </div>
     </div>
   );

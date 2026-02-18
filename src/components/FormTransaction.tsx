@@ -1,7 +1,7 @@
 import type { FirestoreAccount, FormAccountData } from '../types/accountTypes';
 import type { FormEvent } from 'react';
 import type { FormData } from '../types/transactionTypes';
-import { createAccountLabel } from '../helpers/helpers';
+import { createAccountLabel } from '../lib/firestore';
 import MyDatePicker from './MyDatePicker';
 
 const labelClass = "block text-sm font-medium text-gray-700 mb-1"

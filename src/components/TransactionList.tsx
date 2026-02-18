@@ -1,6 +1,6 @@
 import React from 'react';
 import type { FirestoreTransaction } from '../types/transactionTypes';
-import { findAccountById } from '../helpers/helpers';
+import { findAccountById } from '../lib/firestore';
 import type { FirestoreAccount } from '../types/accountTypes';
 
 interface TransactionListProps {
