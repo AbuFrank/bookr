@@ -12,11 +12,16 @@ const ReportGenerator: React.FC = () => {
     try {
       setIsGenerating(true);
 
-      await googleDriveAPI.updateSheetCell(
-        'YOUR_FILE_ID',
-        'Sheet1!J5',
-        'hello world'
+
+      const copiedFile = await googleDriveAPI.copyReportTemplate(
       );
+
+      console.log('Copied file:', copiedFile);
+      // await googleDriveAPI.updateSheetCell(
+      //   'YOUR_FILE_ID',
+      //   'Income & Expense Ledger!J5',
+      //   'hello world'
+      // );
 
       // console.log('Report generated successfully:', result);
       alert('Report generated and saved to your Google Drive!');

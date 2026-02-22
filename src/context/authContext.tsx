@@ -62,7 +62,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const unsubscribe = listenToAuthState((firebaseUser) => {
       if (firebaseUser) {
         // User is signed in
-        googleDriveAPI.setCurrentUser(firebaseUser.uid);
+        googleDriveAPI.setCurrentUser(firebaseUser);
         setUser({
           uid: firebaseUser.uid,
           email: firebaseUser.email,

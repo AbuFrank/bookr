@@ -25,3 +25,6 @@ dist-ssr
 
 # misc
 *-OLD*
+
+# server 
+service-account-key.json

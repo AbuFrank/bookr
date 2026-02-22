@@ -15,10 +15,11 @@ const Login = () => {
 
     try {
       await loginWithGoogle();
-      navigate('/dashboard');
+      // navigate('/');
     } catch (err: any) {
       setError(err.message || 'Failed to login with Google');
     } finally {
+      console.log("Google loging success");
       setLoading(false);
     }
   };

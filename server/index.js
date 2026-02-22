@@ -1,3 +1,4 @@
+// server/index.js
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
@@ -17,14 +18,15 @@ app.use(express.json());
 // Import routes
 import googleDriveRoutes from './googleDriveProxy.js';
 
-// Routes
+// Routes - make sure you're not accidentally adding invalid routes
 app.use('/api', googleDriveRoutes);
 
 // Serve static files from build directory (for production)
 app.use(express.static(path.join(__dirname, '../dist')));
 
-// Fallback for SPA routing
-app.get('*', (req, res) => {
+// Fallback for SPA routing - this is the problematic part in your error
+app.get(/^\/(?!api).*$/, (req, res) => {
+  // This regex ensures we don't match /api routes and serve index.html for SPA
   res.sendFile(path.join(__dirname, '../dist/index.html'));
 });
 
