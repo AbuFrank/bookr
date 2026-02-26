@@ -1,5 +1,5 @@
 import express from 'express';
-import { getGoogleDriveClient, getServiceAccountDrive } from './googleAuth.js';
+import { copyTemplateFile, getGoogleDriveClient } from './googleAuth.js';
 import path from 'path';
 
 const router = express.Router();
@@ -9,9 +9,34 @@ import dotenv from 'dotenv';
 dotenv.config({ path: path.join(process.cwd(), 'server/.env.local') });
 
 const templateId = process.env.GOOGLE_TEMPLATE_ID
+const parentFolderId = process.env.GOOGLE_PARENT_FOLDER_ID
 
 console.log('templateId ===> ', templateId)
 
+// Route to initiate Google OAuth2 flow
+router.get('/auth/google', (req, res) => {
+  try {
+    const url = oauth2Client.generateAuthUrl({
+      access_type: 'offline',
+      scope: [
+        'https://www.googleapis.com/auth/drive',
+        'https://www.googleapis.com/auth/drive.file'
+      ],
+      prompt: 'consent'
+    });
+
+    console.log('Authorization URL:', url);
+
+    // Redirect user to Google OAuth2 consent page
+    res.redirect(url);
+  } catch (error) {
+    console.error('Error generating auth URL:', error);
+    res.status(500).json({
+      error: 'Failed to generate authorization URL',
+      message: error.message
+    });
+  }
+});
 // Copy file from template to user's drive
 router.post('/files/copy', getGoogleDriveClient, async (req, res) => {
   try {
@@ -22,55 +47,74 @@ router.post('/files/copy', getGoogleDriveClient, async (req, res) => {
     console.log("destinationFolderId ==> ", destinationFolderId)
     console.log("fileName ==> ", fileName)
     console.log("email ==> ", email)
+    console.log("parent folder id ===> ", parentFolderId)
 
     if (!templateId) {
-      return res.status(400).json({ error: 'Source file ID required' });
+      return res.status(400).json({ error: 'No template file found.' });
     }
 
+    if (!email) {
+      return res.status(400).json({
+        error: 'user email is required'
+      });
+    }
+
+    const result = await copyTemplateFile(
+      templateId,
+      fileName,
+      email,
+      parentFolderId
+    );
+
+
+    console.log('final result ==> ', result)
+
+
     // Step 1: Grant access to the user for the template file
-    const serviceAccountDrive = getServiceAccountDrive();
+    // const serviceAccountDrive = getServiceAccountDrive();
 
-    console.log("attempting to give access to user, ", email)
+    // console.log("attempting to give access to user, ", email)
 
-    await serviceAccountDrive.drive.permissions.create({
-      fileId: templateId,
-      requestBody: {
-        role: 'reader',
-        type: 'user',
-        emailAddress: email
-      }
-    });
+    // await serviceAccountDrive.drive.permissions.create({
+    //   fileId: templateId,
+    //   requestBody: {
+    //     role: 'reader',
+    //     type: 'user',
+    //     emailAddress: email
+    //   }
+    // });
 
-    console.log('added user to template file ==> ', email)
+    // console.log('added user to template file ==> ', email)
 
-    // Step 2: Copy the file using service account (this ensures we can read it)
-    const copyResponse = await req.drive.files.copy({
-      fileId: templateId,
-      requestBody: {
-        name: fileName || 'Copied Report',
-        parents: destinationFolderId ? [destinationFolderId] : undefined
-      }
-    });
+    // // Step 2: Copy the file using service account (this ensures we can read it)
+    // const copyResponse = await req.drive.files.copy({
+    //   fileId: templateId,
+    //   requestBody: {
+    //     name: fileName || 'Copied Report',
+    //     parents: destinationFolderId ? [destinationFolderId] : undefined
+    //   }
+    // });
 
-    console.log('file copied successfully...')
+    // console.log('file copied successfully...')
 
-    const copiedFileId = copyResponse.data.id;
+    // const copiedFileId = copyResponse.data.id;
 
-    // Step 3: Transfer ownership to the user (this requires the user to have edit access)
-    await serviceAccountDrive.drive.permissions.create({
-      fileId: copiedFileId,
-      requestBody: {
-        role: 'editor',
-        type: 'user',
-        emailAddress: email
-      }
-    });
+    // // Step 3: Transfer ownership to the user (this requires the user to have edit access)
+    // await serviceAccountDrive.drive.permissions.create({
+    //   fileId: copiedFileId,
+    //   requestBody: {
+    //     role: 'editor',
+    //     type: 'user',
+    //     emailAddress: email
+    //   }
+    // });
 
-    console.log('New file created with ownership ===> ', copyResponse.data);
+    // console.log('New file created with ownership ===> ', copyResponse.data);
 
-    res.json(copyResponse.data);
+    // res.json(copyResponse.data);
 
-    res.json(newFile.data);
+    // res.json(newFile.data);
+    res.json(result)
   } catch (error) {
     console.error('Error copying file:', error);
     if (error.code === 400) {

@@ -13,8 +13,7 @@ const ReportGenerator: React.FC = () => {
       setIsGenerating(true);
 
 
-      const copiedFile = await googleDriveAPI.copyReportTemplate(
-      );
+      const copiedFile = await googleDriveAPI.copyReportTemplate();
 
       console.log('Copied file:', copiedFile);
       // await googleDriveAPI.updateSheetCell(

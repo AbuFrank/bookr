@@ -1,6 +1,6 @@
 import { auth, db, googleProvider } from './firebase';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
-import { GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
 import type { User } from 'firebase/auth';
 
 export interface LoginCredentials {
@@ -16,6 +16,12 @@ export interface SignUpData {
 
 export const signInWithGoogle = async (): Promise<User> => {
   try {
+
+
+    googleProvider.setCustomParameters({
+      prompt: 'select_account'
+    });
+
     const result = await signInWithPopup(auth, googleProvider);
     const user = result.user;
 
