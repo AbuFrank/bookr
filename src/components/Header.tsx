@@ -28,10 +28,12 @@ const Header = () => {
                 {(user?.displayName || 'u').split('')[0]}
               </div>
               {showDropdown && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10">
+                <div className="absolute right-0 mt-2 bg-white rounded-md shadow-lg py-4 z-10 px-2">
+                  <p>Sign is as {user?.displayName}</p>
+                  <p>{user?.email}</p>
                   <button
                     onClick={logout}
-                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                    className="block py-2 text-sm text-blue-600 hover:bg-gray-100 w-full text-left"
                   >
                     Sign out
                   </button>

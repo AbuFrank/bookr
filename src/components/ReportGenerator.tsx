@@ -5,6 +5,7 @@ import googleDriveAPI from '../lib/googleDriveClient';
 const ReportGenerator: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
   const [isGenerating, setIsGenerating] = useState(false);
+  const [message, setMessage] = useState('')
 
   const handleGenerateReport = async () => {
     if (!isAuthenticated || !user) return;
@@ -23,11 +24,11 @@ const ReportGenerator: React.FC = () => {
       // );
 
       // console.log('Report generated successfully:', result);
-      alert('Report generated and saved to your Google Drive!');
+      setMessage('Report generated and saved to your Google Drive!');
 
     } catch (error) {
       console.error('Error generating report:', error);
-      alert('Failed to generate report');
+      console.log("Error!!! >> ", error)
     } finally {
       setIsGenerating(false);
     }
@@ -42,6 +43,7 @@ const ReportGenerator: React.FC = () => {
       >
         {isGenerating ? 'Generating...' : 'Generate Report'}
       </button>
+      {message && <div className="p-4"><p>{message}</p></div>}
     </div>
   );
 };

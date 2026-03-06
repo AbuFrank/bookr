@@ -2,6 +2,7 @@ import { google } from 'googleapis';
 import fs from 'fs';
 import path from 'path';
 import dotenv from 'dotenv';
+import { Readable } from 'node:stream';
 
 let serviceAccountClient = null;
 let appExpiryDate = null;
@@ -77,7 +78,6 @@ export const getGoogleDriveClient = async (req, res, next) => {
       return res.status(401).json({ error: 'Access token required' });
     }
 
-    console.log('middleware user ==> ', req.email);
     console.log('access token ==> ', accessToken)
 
 
@@ -97,58 +97,68 @@ export const getGoogleDriveClient = async (req, res, next) => {
 
 export const copyTemplateFile = async (templateId, fileName, userEmail, parentFolderId = null) => {
   try {
-    // const { drive } = getServiceAccountDrive();
+    const { drive } = getServiceAccountDrive();
     console.log('copyTemplateFile...')
 
-    // Check if access token is still valid
-    const now = Math.floor(Date.now() / 1000);
-    if (!appDriveClient || (appExpiryDate && appExpiryDate < now)) {
-      console.log('No client or access token expired, refreshing...');
-      const oauth2Client = new google.auth.OAuth2(
-        CLIENT_ID,
-        CLIENT_SECRET,
-        REDIRECT_URI
-      );
-      console.log('refresh token???? ', refreshToken)
-      console.log('template id???? ', templateId)
-      const tokenResponse = await oauth2Client.refreshToken(refreshToken)
-
-      console.log('TOKENS >>> ', tokenResponse)
-      // console.log('New access token:', tokens.access_token);
-      // console.log('New expiry date:', tokens.expiry_date);
-      // set credentials
-      oauth2Client.setCredentials({
-        access_token: tokens.access_token,
-        refresh_token: refreshToken,
-        expiry_date: tokens.expiry_date
-      });
-      appExpiryDate = tokens.expiry_date;
-      // Create Drive API client
-      appDriveClient = google.drive({
-        version: 'v3',
-        auth: oauth2Client
-      });
-
-    }
-
-
-    console.log('attempting file copy...')
-    const copyResponse = await appDriveClient.files.copy({
+    // Export the Google Spreadsheet as XLSX
+    const exportResponse = await drive.files.export({
       fileId: templateId,
-      requestBody: {
-        name: fileName || 'Copied Report',
-        parents: [parentFolderId]
-      },
+      mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       supportsAllDrives: true
     });
 
-    console.log('copied file response ==> ', copyResponse.data)
+    console.log('export response ==> ', exportResponse.data)
+    console.log("export response type ==> ", typeof exportResponse.data)
+    // Log the response with circular reference handling
+    console.log('Full export response:', JSON.stringify(exportResponse, (key, value) => {
+      if (value && typeof value === 'object' && value.constructor.name === 'Blob') {
+        return '[Blob object - size: ' + (value.size || 'unknown') + ']';
+      }
+      if (value && typeof value === 'object' && value.constructor.name === 'Uint8Array') {
+        return '[Uint8Array - length: ' + value.length + ']';
+      }
+      return value;
+    }, 2));
 
-    const newFileId = copyResponse.data.id;
+    console.log('Export response details:');
+    console.log('Status:', exportResponse.status);
+    console.log('Status Text:', exportResponse.statusText);
+    console.log('Headers:', exportResponse.headers);
+    console.log('Data type:', typeof exportResponse.data);
+    console.log('Data constructor:', exportResponse.data?.constructor?.name);
+    console.log('Data keys (if object):', Object.keys(exportResponse.data || {}));
+
+    const arrayBuffer = await exportResponse.data.arrayBuffer();
+    const fileBuffer = Buffer.from(arrayBuffer);
+
+    console.log("arrayBuffer ==> ", arrayBuffer)
+    console.log("fileBuffer ==>", fileBuffer)
+
+    // Convert Buffer -> Readable stream
+    const fileStream = Readable.from(fileBuffer);
+
+    // Create new spreadsheet file with exported content
+    const createResponse = await drive.files.create({
+      requestBody: {
+        name: fileName || 'Copied Report',
+        parents: [parentFolderId],
+        mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      },
+      media: {
+        mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        body: fileStream
+      },
+      supportsAllDrives: true,
+      fields: 'id, webViewLink',
+    });
+
+    const newFileId = createResponse.data.id;
+
+    console.log('newFileId ==> ', newFileId)
 
     // Set user permissions
     console.log('attempting file permissions for user ==> ', userEmail)
-    await appDriveClient.permissions.create({
+    await drive.permissions.create({
       fileId: newFileId,
       requestBody: {
         role: 'reader',
@@ -160,7 +170,7 @@ export const copyTemplateFile = async (templateId, fileName, userEmail, parentFo
 
     return {
       fileId: newFileId,
-      fileUrl: `https://docs.google.com/document/d/${newFileId}/view`
+      fileUrl: `https://docs.google.com/document/d/${newFileId}/edit`
     };
 
   } catch (error) {

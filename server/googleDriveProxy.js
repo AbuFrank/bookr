@@ -40,11 +40,10 @@ router.get('/auth/google', (req, res) => {
 // Copy file from template to user's drive
 router.post('/files/copy', getGoogleDriveClient, async (req, res) => {
   try {
-    const { destinationFolderId, fileName, email } = req.body;
+    const { fileName, email } = req.body;
 
     console.log("API... ")
     console.log("templateId ==> ", templateId)
-    console.log("destinationFolderId ==> ", destinationFolderId)
     console.log("fileName ==> ", fileName)
     console.log("email ==> ", email)
     console.log("parent folder id ===> ", parentFolderId)
