@@ -2,44 +2,11 @@ import { google } from 'googleapis';
 import fs from 'fs';
 import path from 'path';
 import dotenv from 'dotenv';
-import { Readable } from 'node:stream';
 
 let serviceAccountClient = null;
-let appExpiryDate = null;
-let appDriveClient = null;
-
-// get env variables
-dotenv.config({ path: path.join(process.cwd(), 'server/.env.local') });
-
-const CLIENT_ID = process.env.GOOGLE_CLIENT_ID
-const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET
-const REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI
-const refreshToken = process.env.RT_REFRESH_TOKEN
-
 
 // Get absolute path to service account key
 const keyPath = path.join(process.cwd(), 'server/service-account-key.json');
-
-// Generate auth url to retrieve access token
-async function getRefreshToken() {
-  const oauth2Client = new google.auth.OAuth2(
-    CLIENT_ID,
-    CLIENT_SECRET,
-    REDIRECT_URI
-  );
-
-  // Generate the authorization URL
-  const url = oauth2Client.generateAuthUrl({
-    access_type: 'offline',
-    scope: [
-      'https://www.googleapis.com/auth/drive',
-      'https://www.googleapis.com/auth/drive.file'
-    ],
-    prompt: 'consent' // Forces consent screen to get refresh token
-  });
-
-  console.log('Visit this URL to authorize:', url);
-}
 
 // Service account that has access to the template file
 export const getServiceAccountDrive = () => {
@@ -54,7 +21,8 @@ export const getServiceAccountDrive = () => {
       credentials: keyFile,
       scopes: [
         'https://www.googleapis.com/auth/drive',
-        'https://www.googleapis.com/auth/drive.file'
+        'https://www.googleapis.com/auth/drive.file',
+        'https://www.googleapis.com/auth/spreadsheets',
       ],
     });
 
@@ -100,59 +68,19 @@ export const copyTemplateFile = async (templateId, fileName, userEmail, parentFo
     const { drive } = getServiceAccountDrive();
     console.log('copyTemplateFile...')
 
-    // Export the Google Spreadsheet as XLSX
-    const exportResponse = await drive.files.export({
+    // Copy the file directly using Google Drive API
+    const copyResponse = await drive.files.copy({
       fileId: templateId,
-      mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      supportsAllDrives: true
-    });
-
-    console.log('export response ==> ', exportResponse.data)
-    console.log("export response type ==> ", typeof exportResponse.data)
-    // Log the response with circular reference handling
-    console.log('Full export response:', JSON.stringify(exportResponse, (key, value) => {
-      if (value && typeof value === 'object' && value.constructor.name === 'Blob') {
-        return '[Blob object - size: ' + (value.size || 'unknown') + ']';
-      }
-      if (value && typeof value === 'object' && value.constructor.name === 'Uint8Array') {
-        return '[Uint8Array - length: ' + value.length + ']';
-      }
-      return value;
-    }, 2));
-
-    console.log('Export response details:');
-    console.log('Status:', exportResponse.status);
-    console.log('Status Text:', exportResponse.statusText);
-    console.log('Headers:', exportResponse.headers);
-    console.log('Data type:', typeof exportResponse.data);
-    console.log('Data constructor:', exportResponse.data?.constructor?.name);
-    console.log('Data keys (if object):', Object.keys(exportResponse.data || {}));
-
-    const arrayBuffer = await exportResponse.data.arrayBuffer();
-    const fileBuffer = Buffer.from(arrayBuffer);
-
-    console.log("arrayBuffer ==> ", arrayBuffer)
-    console.log("fileBuffer ==>", fileBuffer)
-
-    // Convert Buffer -> Readable stream
-    const fileStream = Readable.from(fileBuffer);
-
-    // Create new spreadsheet file with exported content
-    const createResponse = await drive.files.create({
       requestBody: {
         name: fileName || 'Copied Report',
-        parents: [parentFolderId],
-        mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-      },
-      media: {
-        mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        body: fileStream
+        parents: parentFolderId ? [parentFolderId] : []
       },
       supportsAllDrives: true,
-      fields: 'id, webViewLink',
+      fields: 'id, webViewLink'
     });
 
-    const newFileId = createResponse.data.id;
+
+    const newFileId = copyResponse.data.id;
 
     console.log('newFileId ==> ', newFileId)
 
@@ -175,6 +103,109 @@ export const copyTemplateFile = async (templateId, fileName, userEmail, parentFo
 
   } catch (error) {
     console.error('Error in copyTemplateFile:', error);
+    throw error;
+  }
+};
+
+// Batch update spreadsheet
+export const updateBatchCells = async (fileId, updates) => {
+  try {
+    const { sheets } = getServiceAccountDrive();
+    console.log('Updating sheet cells...');
+
+    const fetchFileResponse = await sheets.spreadsheets.get({
+      spreadsheetId: fileId
+    });
+
+    console.log('Available sheets:', fetchFileResponse.data.sheets);
+
+    const sheetId = fetchFileResponse.data.sheets[0].properties.sheetId
+
+    // Prepare the update requests
+    const requests = updates.map(update => {
+      const { column, values, startRow = 4 } = update; // Default to row 4 (0-indexed)
+
+      // Convert 0-based indexing to 1-based for spreadsheet
+      const startRowIndex = startRow;
+      const endRowIndex = startRow + values.length;
+
+      // Create rows for each "column" update
+      const rows = values.map((value, index) => {
+        // Handle different types of values
+        let userEnteredValue;
+
+        if (typeof value === 'number') {
+          userEnteredValue = { numberValue: value };
+        } else if (typeof value === 'string' && !isNaN(Number(value)) && isFinite(value)) {
+          // If it's a string that represents a number
+          userEnteredValue = { numberValue: Number(value) };
+        } else {
+          // Treat as text
+          userEnteredValue = { stringValue: String(value) };
+        }
+
+        return {
+          values: [
+            {
+              userEnteredValue
+            }
+          ]
+        };
+      });
+
+      return {
+        updateCells: {
+          range: {
+            sheetId: sheetId,
+            startRowIndex: startRowIndex,
+            endRowIndex: endRowIndex,
+            startColumnIndex: column,
+            endColumnIndex: column + 1
+          },
+          rows: rows,
+          fields: 'userEnteredValue'
+        }
+      };
+    });
+
+    // Execute the batch update
+    const response = await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: fileId,
+      requestBody: {
+        requests: requests
+      }
+    });
+
+    console.log('Sheet updated successfully:', response.data);
+    return response.data;
+
+  } catch (error) {
+    console.error('Error updating sheet cells:', error);
+    throw error;
+  }
+};
+
+// Function to get sheet information and sheet IDs
+export const getSheetInfo = async (fileId) => {
+  try {
+    const { sheets } = getServiceAccountDrive();
+
+    const response = await sheets.spreadsheets.get({
+      spreadsheetId: fileId,
+      fields: 'sheets(properties)'
+    });
+
+    const sheetsInfo = response.data.sheets.map(sheet => ({
+      sheetId: sheet.properties.sheetId,
+      title: sheet.properties.title,
+      gridProperties: sheet.properties.gridProperties
+    }));
+
+    console.log('Sheet information:', sheetsInfo);
+    return sheetsInfo;
+
+  } catch (error) {
+    console.error('Error getting sheet info:', error);
     throw error;
   }
 };

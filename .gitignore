@@ -27,4 +27,4 @@ dist-ssr
 *-OLD*
 
 # server 
-service-account-key.json
+*-key.json

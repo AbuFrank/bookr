@@ -1,9 +1,11 @@
-import { onAuthStateChanged, type User } from 'firebase/auth';
+import { onAuthStateChanged } from 'firebase/auth';
+import type { User } from 'firebase/auth';
 import { auth, db } from '../firebase/firebase';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
+import type { Update } from '../types/spreadsheetTypes';
 
 interface DriveFile {
-  id: string;
+  fileId: string;
   name: string;
   mimeType: string;
   // ... other properties
@@ -11,7 +13,7 @@ interface DriveFile {
 
 interface GoogleDriveAPI {
   setCurrentUser: (user: User | null) => void;
-  updateSheetCell: (spreadsheetId: string, range: string, value: any) => Promise<any>;
+  updateSheetCells: (spreadsheetId: string, updates: Update[]) => Promise<any>;
   getAccessToken: () => Promise<string>;
   storeAccessToken: (accessToken: string) => Promise<void>;
   clearAccessToken: () => Promise<void>;
@@ -48,6 +50,7 @@ const googleDriveAPI: GoogleDriveAPI = {
       console.log('///////////////////')
       console.log('accessToken ==> ', accessToken)
       console.log('current User ==> ', currentUser?.email)
+      // TODO use `emailVerified` 
 
       const response = await fetch('/api/files/copy', {
         method: 'POST',
@@ -74,9 +77,9 @@ const googleDriveAPI: GoogleDriveAPI = {
     }
   },
 
-  async updateSheetCell(spreadsheetId: string, range: string, value: any): Promise<void> {
+  async updateSheetCells(spreadsheetId: string, updates: Update[]): Promise<void> {
     // If we don't have a user ID or token, try to get it from context
-    if (!currentUser) {
+    try {
       console.log('no current userId found, fetching... ')
       const currentUser = await new Promise((resolve) => {
         const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -85,39 +88,30 @@ const googleDriveAPI: GoogleDriveAPI = {
         });
       });
 
-      console.log('current user? ==> ', currentUser)
+      const accessToken = await googleDriveAPI.getAccessToken();
 
-      if (currentUser) {
+      console.log('///////////////////')
+      console.log('accessToken ==> ', accessToken)
+      console.log('current User ==> ', currentUser?.email)
+      console.log('spreadsheetId ==> ', spreadsheetId)
+      console.log('Updates ==> ', updates)
 
-      } else {
-        throw new Error('No authenticated user found');
-      }
-    }
-
-    // Get the access token
-    const accessToken = await this.getAccessToken();
-    if (!accessToken) {
-      throw new Error('No access token available');
-    }
-
-    // Make API call to Google Sheets
-    const response = await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}:append`,
-      {
-        method: 'POST',
+      const response = await fetch(`/api/sheets/${spreadsheetId}/updates`, {
+        method: 'PUT',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          values: [[value]],
-          valueInputOption: 'USER_ENTERED'
+          updates,
         })
-      }
-    );
+      });
 
-    if (!response.ok) {
-      throw new Error(`Google Sheets API error: ${response.status}`);
+      console.log('//////////////////')
+      console.log('updateSheetCells response ==> ', response)
+    } catch (error) {
+      console.error('Error updating spreadsheet:', { error, spreadsheetId });
+      throw error;
     }
   },
 

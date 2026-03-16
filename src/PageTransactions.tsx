@@ -7,7 +7,7 @@ import { useAuth } from './hooks/useAuth';
 import type { FirestoreAccount, FormAccountData } from './types/accountTypes';
 import type { FirestoreTransaction } from './types/transactionTypes';
 import { findAccountById, generateFirestoreId } from './lib/firestore';
-import ReportGenerator from './components/ReportGenerator';
+import ReportTrigger from './components/ReportTrigger';
 
 const Transactions: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -200,7 +200,7 @@ const Transactions: React.FC = () => {
           />
 
         </div>
-        <ReportGenerator />
+        <ReportTrigger />
       </main>
     </div>
   );

@@ -1,5 +1,5 @@
 import express from 'express';
-import { copyTemplateFile, getGoogleDriveClient } from './googleAuth.js';
+import { copyTemplateFile, getGoogleDriveClient, updateBatchCells } from './googleAuth.js';
 import path from 'path';
 
 const router = express.Router();
@@ -68,51 +68,6 @@ router.post('/files/copy', getGoogleDriveClient, async (req, res) => {
 
     console.log('final result ==> ', result)
 
-
-    // Step 1: Grant access to the user for the template file
-    // const serviceAccountDrive = getServiceAccountDrive();
-
-    // console.log("attempting to give access to user, ", email)
-
-    // await serviceAccountDrive.drive.permissions.create({
-    //   fileId: templateId,
-    //   requestBody: {
-    //     role: 'reader',
-    //     type: 'user',
-    //     emailAddress: email
-    //   }
-    // });
-
-    // console.log('added user to template file ==> ', email)
-
-    // // Step 2: Copy the file using service account (this ensures we can read it)
-    // const copyResponse = await req.drive.files.copy({
-    //   fileId: templateId,
-    //   requestBody: {
-    //     name: fileName || 'Copied Report',
-    //     parents: destinationFolderId ? [destinationFolderId] : undefined
-    //   }
-    // });
-
-    // console.log('file copied successfully...')
-
-    // const copiedFileId = copyResponse.data.id;
-
-    // // Step 3: Transfer ownership to the user (this requires the user to have edit access)
-    // await serviceAccountDrive.drive.permissions.create({
-    //   fileId: copiedFileId,
-    //   requestBody: {
-    //     role: 'editor',
-    //     type: 'user',
-    //     emailAddress: email
-    //   }
-    // });
-
-    // console.log('New file created with ownership ===> ', copyResponse.data);
-
-    // res.json(copyResponse.data);
-
-    // res.json(newFile.data);
     res.json(result)
   } catch (error) {
     console.error('Error copying file:', error);
@@ -128,6 +83,41 @@ router.post('/files/copy', getGoogleDriveClient, async (req, res) => {
     res.status(500).json({ error: 'Failed to copy file' });
   }
 });
+
+// Update multiple cells in the Google Sheet
+router.put('/sheets/:fileId/updates/', async (req, res) => {
+  try {
+    const { fileId } = req.params;
+    const { updates } = req.body;
+
+    if (!updates || !Array.isArray(updates)) {
+      return res.status(400).json({ error: 'Invalid updates format' });
+    }
+
+    const response = await updateBatchCells(fileId, updates)
+
+    console.log('response ==> ', response.data)
+
+    res.json({
+      success: true,
+      message: "Data updated successfully"
+    })
+
+  } catch (error) {
+    console.error('Error updating sheet:', error);
+    // Handle specific Google API errors
+    if (error.code === 400) {
+      return res.status(400).json({ error: 'Invalid request parameters' });
+    }
+    if (error.code === 403) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    if (error.code === 404) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+    res.status(500).json({ error: 'Failed to update sheet' });
+  }
+})
 
 // Update a cell in Google Sheet
 router.put('/sheets/:fileId/values/:range', getGoogleDriveClient, async (req, res) => {
