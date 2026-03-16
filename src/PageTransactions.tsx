@@ -10,18 +10,17 @@ import { findAccountById, generateFirestoreId } from './lib/firestore';
 import ReportTrigger from './components/ReportTrigger';
 
 const Transactions: React.FC = () => {
+  const [subType, setSubType] = useState<'non-deductible' | 'non-income' | null>(null);
   const [formData, setFormData] = useState({
     checkNumber: '',
     date: new Date(),
     paidTo: '',
     accountId: '',
     value: '',
-    type: 'income' as 'income' | 'expense'
+    type: 'deposit' as 'deposit' | 'expense'
   });
 
   const [newAccount, setNewAccount] = useState<FormAccountData>({
-    accountType: '',
-    accountNumber: '',
     accountName: '',
   });
 
@@ -32,6 +31,12 @@ const Transactions: React.FC = () => {
 
   const handleTransactionFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
+
+    if (name === 'type') {
+      // Reset subType when type changes
+      setSubType(null);
+    }
+
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
@@ -69,9 +74,10 @@ const Transactions: React.FC = () => {
         date: formData.date,
         dateCreated: new Date,
         paidTo: formData.paidTo,
-        accountId: formData.accountId,
+        accountId: currentAccount?.id || null,
         value: parseFloat(formData.value),
-        type: formData.type as 'expense' | 'income',
+        type: formData.type as 'expense' | 'deposit',
+        subType: subType ? subType : null
       };
 
       try {
@@ -84,6 +90,7 @@ const Transactions: React.FC = () => {
           value: '',
           type: 'expense'
         });
+        setSubType(null);
         setCurrentAccount(null)
       } catch (error) {
         console.error('Error submitting transaction:', error);
@@ -92,15 +99,7 @@ const Transactions: React.FC = () => {
   };
 
   const handleAccountSubmit = async () => {
-    // TODO account - prevent duplicate type and number
-    console.log('New Account submit ===> ', {
-      type: newAccount.accountType,
-      number: newAccount.accountNumber,
-      name: newAccount.accountName
-    })
     if (
-      newAccount.accountType &&
-      newAccount.accountNumber &&
       newAccount.accountName
     ) {
 
@@ -108,8 +107,6 @@ const Transactions: React.FC = () => {
         id: generateFirestoreId('accounts'),
         userId: user?.uid || 'unknown',  // Get the user's UID
         dateCreated: new Date,
-        accountNumber: newAccount.accountNumber,
-        accountType: newAccount.accountType,
         accountName: newAccount.accountName
       };
 
@@ -117,8 +114,6 @@ const Transactions: React.FC = () => {
       try {
         await addAccount(accountData);
         setNewAccount({
-          accountType: '',
-          accountNumber: '',
           accountName: '',
         });
         setCurrentAccount(accountData)
@@ -137,13 +132,32 @@ const Transactions: React.FC = () => {
     );
   }
 
-  const totalIncome =
-    transactions.filter(t => t.type === 'income')
-      .reduce((sum, t) => sum + t.value, 0);
+  const totalDeposits = transactions
+    .filter(t => t.type === 'deposit')
+    .reduce((sum, t) => sum + t.value, 0);
 
-  const totalExpenses =
-    transactions.filter(t => t.type === 'expense')
-      .reduce((sum, t) => sum + t.value, 0);
+  const totalNonIncomeDeposits = transactions
+    .filter(t => t.type === 'deposit' && t.subType === 'non-income')
+    .reduce((sum, t) => sum + t.value, 0);
+
+  const totalIncome = totalDeposits - totalNonIncomeDeposits;
+
+  const totalDeductibleExpenses = transactions
+    .filter(t => t.type === 'expense' && (!t.subType || t.subType !== 'non-deductible'))
+    .reduce((sum, t) => sum + t.value, 0);
+
+  const totalNonDeductibleExpenses = transactions
+    .filter(t => t.type === 'expense' && t.subType === 'non-deductible')
+    .reduce((sum, t) => sum + t.value, 0);
+
+  const totalExpenses = transactions
+    .filter(t => t.type === 'expense')
+    .reduce((sum, t) => sum + t.value, 0);
+
+  // Calculate the balance excluding non-income and non-deductible
+  const totalBalance = totalDeposits - totalExpenses;
+  const totalBalanceExcludingNonIncomeAndNonDeductible =
+    (totalDeposits - totalNonIncomeDeposits) - (totalExpenses - totalNonDeductibleExpenses);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -151,9 +165,14 @@ const Transactions: React.FC = () => {
 
       <main className="container mx-auto px-4 py-8">
         <StatCards
+          totalDeposits={totalDeposits}
           totalIncome={totalIncome}
+          totalNonIncomeDeposits={totalNonIncomeDeposits}
+          totalDeductibleExpenses={totalDeductibleExpenses}
+          totalNonDeductibleExpenses={totalNonDeductibleExpenses}
           totalExpenses={totalExpenses}
-          balance={totalIncome - totalExpenses}
+          balance={totalBalance}
+          balanceExcludingNonIncomeAndNonDeductible={totalBalanceExcludingNonIncomeAndNonDeductible}
         />
 
         <div className="mt-8 bg-white rounded-xl shadow-md p-6">
@@ -187,6 +206,8 @@ const Transactions: React.FC = () => {
               isAccountFormToggled={isAccountFormToggled}
               newAccount={newAccount}
               setNewAccount={setNewAccount}
+              subType={subType}
+              setSubType={setSubType}
             />
           )}
 

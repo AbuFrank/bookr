@@ -1,12 +1,26 @@
 import React from 'react';
 
 interface StatCardsProps {
+  totalDeposits: number;
   totalIncome: number;
+  totalNonIncomeDeposits: number;
+  totalDeductibleExpenses: number;
+  totalNonDeductibleExpenses: number;
   totalExpenses: number;
   balance: number;
+  balanceExcludingNonIncomeAndNonDeductible: number;
 }
 
-const StatCards: React.FC<StatCardsProps> = ({ totalIncome, totalExpenses, balance }) => {
+const StatCards: React.FC<StatCardsProps> = ({
+  totalDeposits,
+  totalIncome,
+  totalNonIncomeDeposits,
+  totalDeductibleExpenses,
+  totalNonDeductibleExpenses,
+  totalExpenses,
+  balance,
+  balanceExcludingNonIncomeAndNonDeductible
+}) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
       <div className="bg-white rounded-xl shadow-md p-6 card">
@@ -17,8 +31,10 @@ const StatCards: React.FC<StatCardsProps> = ({ totalIncome, totalExpenses, balan
             </svg>
           </div>
           <div>
-            <p className="text-gray-500 text-sm">Total Income</p>
-            <p className="text-2xl font-bold text-gray-800">${totalIncome.toFixed(2)}</p>
+            <p className="text-gray-500 text-sm">Total Deposits</p>
+            <p className="text-2xl font-bold text-gray-800">${totalDeposits.toFixed(2)}</p>
+            <p className="text-xs text-gray-500 mt-1">Total Income: ${(totalIncome).toFixed(2)}</p>
+            <p className="text-xs text-gray-500 mt-1">Non-Income: ${(totalNonIncomeDeposits).toFixed(2)}</p>
           </div>
         </div>
       </div>
@@ -33,6 +49,8 @@ const StatCards: React.FC<StatCardsProps> = ({ totalIncome, totalExpenses, balan
           <div>
             <p className="text-gray-500 text-sm">Total Expenses</p>
             <p className="text-2xl font-bold text-gray-800">${totalExpenses.toFixed(2)}</p>
+            <p className="text-xs text-gray-500 mt-1">Non-Deductible: ${(totalNonDeductibleExpenses).toFixed(2)}</p>
+            <p className="text-xs text-gray-500 mt-1">Deductible: ${(totalDeductibleExpenses).toFixed(2)}</p>
           </div>
         </div>
       </div>
@@ -49,6 +67,7 @@ const StatCards: React.FC<StatCardsProps> = ({ totalIncome, totalExpenses, balan
             <p className={`text-2xl font-bold ${balance >= 0 ? 'text-blue-600' : 'text-yellow-600'}`}>
               ${balance.toFixed(2)}
             </p>
+            <p className="text-xs text-gray-500 mt-1">Excluding Non-Income/Non-Deductible: ${(balanceExcludingNonIncomeAndNonDeductible).toFixed(2)}</p>
           </div>
         </div>
       </div>
