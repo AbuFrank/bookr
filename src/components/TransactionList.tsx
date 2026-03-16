@@ -2,6 +2,7 @@ import React from 'react';
 import type { FirestoreTransaction } from '../types/transactionTypes';
 import { findAccountById } from '../lib/firestore';
 import type { FirestoreAccount } from '../types/accountTypes';
+import { formatFirestoreDate } from '../helpers/date';
 
 interface TransactionListProps {
   accounts: FirestoreAccount[]
@@ -35,6 +36,9 @@ const TransactionList: React.FC<TransactionListProps> = ({ accounts, transaction
       <table className="min-w-full divide-y divide-gray-200">
         <thead className="bg-gray-50">
           <tr>
+            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Check No.</th>
+            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">To Whom Paid</th>
             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Account</th>
             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Number</th>
             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
@@ -45,20 +49,27 @@ const TransactionList: React.FC<TransactionListProps> = ({ accounts, transaction
         <tbody className="bg-white divide-y divide-gray-200">
           {transactions.map((transaction) => (
             <tr key={transaction.paidTo + transaction.value} className="hover:bg-gray-50">
+
               <td className="px-6 py-4 whitespace-nowrap">
-                <div className="text-sm font-medium text-gray-900">{transaction.paidTo}</div>
+                <div className="text-sm font-medium text-gray-900">{formatFirestoreDate(transaction.date)}</div>
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
-                <div className="text-sm text-gray-500">{findAccountById(accounts, transaction.accountId)?.accountName}</div>
+                <div className="text-sm font-medium text-gray-900">{transaction.checkNumber}</div>
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
-                <div className={`text-sm font-medium ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+                <div className="text-sm font-medium text-gray-900">{transaction.paidTo}:{transaction.id}</div>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <div className="text-sm text-gray-500">{findAccountById(accounts, transaction?.accountId)?.accountName}</div>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <div className={`text-sm font-medium ${transaction.type === 'deposit' ? 'text-green-600' : 'text-red-600'}`}>
                   {formatCurrency(transaction.value)}
                 </div>
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
                 <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                  ${transaction.type === 'income' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                  ${transaction.type === 'deposit' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                   {transaction.type.charAt(0).toUpperCase() + transaction.type.slice(1)}
                 </span>
               </td>

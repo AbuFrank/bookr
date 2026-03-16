@@ -5,7 +5,8 @@ export interface FormData {
   paidTo: string,
   value: string,
   date: Date,
-  type: 'income' | 'expense'
+  type: 'deposit' | 'expense',
+  subType?: 'non-deductible' | 'non-income'
 }
 
 export interface FirestoreTransaction {
@@ -15,9 +16,10 @@ export interface FirestoreTransaction {
   date: Date;
   dateCreated: Date;
   paidTo: string;
-  accountId: string;
+  accountId: string | null;
   value: number;
-  type: 'expense' | 'income';
+  type: 'expense' | 'deposit';
+  subType: 'non-deductible' | 'non-income' | null
 }
 
 export const TransactionActions = {

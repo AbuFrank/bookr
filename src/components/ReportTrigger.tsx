@@ -3,7 +3,7 @@ import { useAuth } from '../hooks/useAuth';
 import googleDriveAPI from '../lib/googleDriveClient';
 
 const ReportTrigger: React.FC = () => {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, transactions } = useAuth();
   const [isProcessing, setIsProcessing] = useState(false);
   const [message, setMessage] = useState('')
 
@@ -47,7 +47,7 @@ const ReportTrigger: React.FC = () => {
       {
         column: 11, // 11th column (total)
         startRow: 4, // Starting at row 5 (0-indexed)
-        values: [40, 25, 300] // Will be written to L5, L6, L7
+        values: [40, 25, 311] // Will be written to L5, L6, L7
       }
     ];
 
@@ -72,12 +72,12 @@ const ReportTrigger: React.FC = () => {
 
   return (
     <div>
-      <div className="sm:flex flex-row">
+      {transactions?.length > 0 && <div className="sm:flex flex-row mt-3">
 
         <button
           onClick={handleGenerateReport}
           disabled={!isAuthenticated || isProcessing}
-          className="px-6 py-3 rounded-md font-medium bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
+          className="px-6 py-3 mr-2 rounded-md font-medium bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
 
         >
           {isProcessing ? 'Generating...' : 'Generate Report'}
@@ -90,7 +90,7 @@ const ReportTrigger: React.FC = () => {
         >
           {isProcessing ? 'Updating...' : 'Update Report'}
         </button>
-      </div>
+      </div>}
       {message && <div className="p-4"><p>{message}</p></div>}
     </div>
   );

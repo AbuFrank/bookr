@@ -1,12 +1,28 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 
 const Header = () => {
-  const navigate = useNavigate();
   const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const { logout, user } = useAuth()
+
+  // Handle clicks outside the dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+
+    // Bind the event listener
+    document.addEventListener('mousedown', handleClickOutside);
+
+    // Cleanup the event listener
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   return (
     <header className="bg-white shadow">
@@ -20,7 +36,7 @@ const Header = () => {
           </h1>
           <div className="flex items-center space-x-4">
 
-            <div className="relative">
+            <div className="relative" ref={dropdownRef}>
               <div
                 className="h-10 w-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-semibold cursor-pointer hover:bg-blue-600 transition-colors"
                 onClick={() => setShowDropdown(!showDropdown)}
@@ -31,6 +47,7 @@ const Header = () => {
                 <div className="absolute right-0 mt-2 bg-white rounded-md shadow-lg py-4 z-10 px-2">
                   <p>Sign is as {user?.displayName}</p>
                   <p>{user?.email}</p>
+                  <p>{user?.uid}</p>
                   <button
                     onClick={logout}
                     className="block py-2 text-sm text-blue-600 hover:bg-gray-100 w-full text-left"

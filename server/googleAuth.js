@@ -15,8 +15,6 @@ export const getServiceAccountDrive = () => {
       fs.readFileSync(path.join(keyPath), 'utf8')
     );
 
-    console.log('keyFile ==> ', keyFile.project_id)
-
     const auth = new google.auth.GoogleAuth({
       credentials: keyFile,
       scopes: [
