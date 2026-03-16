@@ -81,12 +81,6 @@ const googleDriveAPI: GoogleDriveAPI = {
     // If we don't have a user ID or token, try to get it from context
     try {
       console.log('no current userId found, fetching... ')
-      const currentUser = await new Promise((resolve) => {
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
-          unsubscribe();
-          resolve(user);
-        });
-      });
 
       const accessToken = await googleDriveAPI.getAccessToken();
 

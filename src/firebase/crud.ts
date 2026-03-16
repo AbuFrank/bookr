@@ -1,12 +1,13 @@
 import type { FirestoreAccount } from '../types/accountTypes';
 import type { FirestoreTransaction } from '../types/transactionTypes';
 import { db } from './firebase'; // Assuming your firebase initialization is in firebase.ts
-import { collection, addDoc, query, where, getDocs, updateDoc, deleteDoc, doc } from 'firebase/firestore';
+import { collection, query, where, getDocs, updateDoc, deleteDoc, doc, setDoc } from 'firebase/firestore';
 
 export async function createTransaction(transaction: FirestoreTransaction) {
   try {
+    console.log('TRANSACTION ..... ', transaction)
     const transactionsCollection = collection(db, 'transactions'); // 'transactions' is the collection name
-    await addDoc(transactionsCollection, transaction);
+    await setDoc(doc(transactionsCollection, transaction.id), transaction);
   } catch (error) {
     console.error('Error saving transaction:', error);
   }
@@ -39,6 +40,7 @@ export async function updateFirestoreTransaction(transaction: FirestoreTransacti
 
 export async function deleteFirestoreTransaction(transactionId: string) {
   try {
+    console.log('transactionId ==> ', transactionId)
     const transactionDocRef = doc(db, 'transactions', transactionId);
     await deleteDoc(transactionDocRef);
     console.log('Transaction deleted successfully!');
@@ -53,7 +55,7 @@ export async function createAccount(account: FirestoreAccount) {
   try {
     console.log('creating a new account ====>', account)
     const accountsCollection = collection(db, 'accounts');
-    await addDoc(accountsCollection, { ...account });
+    await setDoc(doc(accountsCollection, account.id), account);
   } catch (error) {
     console.error('Error creating account:', error);
   }
