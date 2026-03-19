@@ -1,6 +1,15 @@
 # Personal Finance Tracker
 
-A modern, web-based personal finance tracking application built with React, Vite, and Firebase. This app helps users manage their income and expenses, track account balances, and generate financial reports directly from Google Sheets.
+A modern, web-based personal finance tracking application built with React, Vite, and Firebase. This app helps users manage their income and expenses, track account balances, and generate financial reports.
+
+## TODOs
+
+Contributors welcomed!
+
+- retroactive updates
+    - Since there can be multiple books for a given fiscal year, there needs to be a way to update YTD totals if a past book is updated.
+    - one option is to use firestore triggers to calculate totals any time a transaction is _updated_
+- Do folder and file updates directly from client (with the exception of template copy)
 
 ## 🚀 Features
 
