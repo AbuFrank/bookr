@@ -44,9 +44,6 @@ export const getGoogleDriveClient = async (req, res, next) => {
       return res.status(401).json({ error: 'Access token required' });
     }
 
-    console.log('access token ==> ', accessToken)
-
-
     const auth = new google.auth.OAuth2();
     auth.setCredentials({ access_token: accessToken });
 
@@ -71,7 +68,6 @@ export const copyTemplateFile = async (templateId, fileName, userEmail, parentFo
       fileId: templateId,
       requestBody: {
         name: fileName || 'Copied Report',
-        parents: parentFolderId ? [parentFolderId] : []
       },
       supportsAllDrives: true,
       fields: 'id, webViewLink'
@@ -87,7 +83,7 @@ export const copyTemplateFile = async (templateId, fileName, userEmail, parentFo
     await drive.permissions.create({
       fileId: newFileId,
       requestBody: {
-        role: 'reader',
+        role: 'owner',
         type: 'user',
         emailAddress: userEmail
       },

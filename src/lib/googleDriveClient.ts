@@ -3,6 +3,8 @@ import type { User } from 'firebase/auth';
 import { auth, db } from '../firebase/firebase';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import type { Update } from '../types/spreadsheetTypes';
+import type { Folder } from '../types/folderTypes';
+import { createFirestoreFolder } from '../firebase/crud';
 
 interface DriveFile {
   fileId: string;
@@ -15,10 +17,11 @@ interface GoogleDriveAPI {
   setCurrentUser: (user: User | null) => void;
   updateSheetCells: (spreadsheetId: string, updates: Update[]) => Promise<any>;
   getAccessToken: () => Promise<string>;
+  createFolder: (name: string, parentId: string) => Promise<Folder>;
   storeAccessToken: (accessToken: string) => Promise<void>;
   clearAccessToken: () => Promise<void>;
   refreshAccessToken: () => Promise<string>;
-  copyReportTemplate: () => Promise<DriveFile>;
+  copyReportTemplate: (parentFolderId?: string) => Promise<DriveFile>;
 }
 
 let currentUser: User | null = null
@@ -36,14 +39,63 @@ onAuthStateChanged(auth, (user) => {
   }
 });
 
-
-
 const googleDriveAPI: GoogleDriveAPI = {
   setCurrentUser(user: User | null) {
     currentUser = user
   },
 
-  async copyReportTemplate(destinationFolderId?: string): Promise<DriveFile> {
+  async createFolder(name: string, parentId: string): Promise<Folder> {
+    if (!currentUser) {
+      throw new Error('No authenticated user found');
+    }
+
+    console.log('creating folder ==> ', `name: ${name}`, `parentId: ${parentId}`)
+    try {
+      // No folder ID exists, need to create it
+      const accessToken = await googleDriveAPI.getAccessToken();
+
+      const response = await fetch('/api/folder', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name,
+          parentId
+        })
+      });
+
+      console.log('response status ', response.status)
+
+      if (response.status === 401) {
+        throw new Error('Token expired')
+      }
+
+      if (!response.ok) {
+        throw new Error(`Failed to create folder: ${response.status}`);
+      }
+
+      const folderData = await response.json();
+
+      const folder: Folder = {
+        id: folderData.id,
+        dateCreated: new Date(),
+        name,
+        userId: currentUser.uid,
+        parentId,
+      }
+      // Store the folder ID in Firestore
+      const folderId = createFirestoreFolder(folder)
+      console.log('Created and stored folder:', folderId);
+      return folder
+    } catch (error) {
+      console.error('Error creating Bookr folder:', error);
+      throw error;
+    }
+  },
+
+  async copyReportTemplate(parentFolderId?: string): Promise<DriveFile> {
     try {
       const accessToken = await googleDriveAPI.getAccessToken();
 
@@ -59,9 +111,9 @@ const googleDriveAPI: GoogleDriveAPI = {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          destinationFolderId,
           fileName: 'My Report TEST',
-          email: currentUser?.email
+          email: currentUser?.email,
+          parentFolderId
         })
       });
 

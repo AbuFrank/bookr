@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 
 const Login = () => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const { user } = useAuth();
 
   const { loginWithGoogle } = useAuth();
   const navigate = useNavigate();
@@ -15,13 +17,21 @@ const Login = () => {
 
     try {
       await loginWithGoogle();
-      navigate('/');
+      navigate('/books');
     } catch (err: any) {
       setError(err.message || 'Failed to login with Google');
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    // If user is already authenticated, redirect to books page
+    if (user) {
+      navigate('/books', { replace: true });
+    }
+  }, [user, navigate]);
+
 
   return (
     <div className="min-h-screen bg-linear-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">

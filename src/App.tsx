@@ -4,6 +4,7 @@ import Login from './Login';
 import ProtectedRoute from './components/ProtectedRoute';
 import Transactions from './PageTransactions';
 import Unauthorized from './Unauthorized';
+import PageBooks from './PageBooks';
 
 function App() {
   return (
@@ -23,17 +24,17 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            {/* <Route 
-              path="/profile" 
+            <Route
+              path="/books"
               element={
-                <ProtectedRoute requiredRole="user">
-                  <Profile />
+                <ProtectedRoute>
+                  <PageBooks />
                 </ProtectedRoute>
-              } 
-            /> */}
+              }
+            />
 
             {/* Default route */}
-            <Route path="/" element={<Navigate to="/transactions" replace />} />
+            <Route path="/" element={<Navigate to="/books" replace />} />
           </Routes>
         </div>
       </AuthProvider>

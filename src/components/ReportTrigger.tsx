@@ -3,9 +3,10 @@ import { useAuth } from '../hooks/useAuth';
 import googleDriveAPI from '../lib/googleDriveClient';
 
 const ReportTrigger: React.FC = () => {
-  const { user, isAuthenticated, transactions } = useAuth();
+  const { user, isAuthenticated, transactions, currentParentFolder } = useAuth();
   const [isProcessing, setIsProcessing] = useState(false);
-  const [message, setMessage] = useState('')
+  const [message, setMessage] = useState('');
+  const [currentFile, setCurrentFile] = useState('')
 
   const handleGenerateReport = async () => {
     if (!isAuthenticated || !user || isProcessing) return;
@@ -14,9 +15,12 @@ const ReportTrigger: React.FC = () => {
       setIsProcessing(true);
 
 
-      const copiedFile = await googleDriveAPI.copyReportTemplate();
+      const copiedFile = await googleDriveAPI.copyReportTemplate(currentParentFolder.id);
 
       const fileId = copiedFile.fileId
+
+      // TODO file name?
+      setCurrentFile(fileId)
 
       console.log('Copied file:', copiedFile);
       console.log('Copied file ID:', fileId);
@@ -35,7 +39,6 @@ const ReportTrigger: React.FC = () => {
   const handleUpdateValues = async () => {
     if (!isAuthenticated || !user) return;
 
-    const spreadsheetId = '1LcwEn8oMSKcxYRYum5OkO3e3NBDuhuq9F2jwNXPLlCE'
 
     // TODO pull from data
     const updates = [
@@ -52,7 +55,7 @@ const ReportTrigger: React.FC = () => {
     ];
 
 
-    const response = await googleDriveAPI.updateSheetCells(spreadsheetId, updates);
+    const response = await googleDriveAPI.updateSheetCells(currentFile, updates);
 
     console.log("trigger button response ==> ", response)
 
@@ -74,22 +77,26 @@ const ReportTrigger: React.FC = () => {
     <div>
       {transactions?.length > 0 && <div className="sm:flex flex-row mt-3">
 
-        <button
-          onClick={handleGenerateReport}
-          disabled={!isAuthenticated || isProcessing}
-          className="px-6 py-3 mr-2 rounded-md font-medium bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
+        {currentFile ?
+          (
+            <button
+              onClick={handleGenerateReport}
+              disabled={!isAuthenticated || isProcessing}
+              className="px-6 py-3 mr-2 rounded-md font-medium bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
 
-        >
-          {isProcessing ? 'Generating...' : 'Generate Report'}
-        </button>
-        <button
-          onClick={handleUpdateValues}
-          disabled={!isAuthenticated || isProcessing}
-          className="px-6 py-3 rounded-md font-medium bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
+            >
+              {isProcessing ? 'Generating...' : 'Generate Report'}
+            </button>
+          ) : (
+            <button
+              onClick={handleUpdateValues}
+              disabled={!isAuthenticated || isProcessing}
+              className="px-6 py-3 rounded-md font-medium bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
 
-        >
-          {isProcessing ? 'Updating...' : 'Update Report'}
-        </button>
+            >
+              {isProcessing ? 'Updating...' : 'Update Report'}
+            </button>
+          )}
       </div>}
       {message && <div className="p-4"><p>{message}</p></div>}
     </div>

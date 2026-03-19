@@ -11,8 +11,6 @@ dotenv.config({ path: path.join(process.cwd(), 'server/.env.local') });
 const templateId = process.env.GOOGLE_TEMPLATE_ID
 const parentFolderId = process.env.GOOGLE_PARENT_FOLDER_ID
 
-console.log('templateId ===> ', templateId)
-
 // Route to initiate Google OAuth2 flow
 router.get('/auth/google', (req, res) => {
   try {
@@ -37,10 +35,39 @@ router.get('/auth/google', (req, res) => {
     });
   }
 });
+
+// Create folder for the user
+router.post('/folder', getGoogleDriveClient, async (req, res) => {
+  try {
+    const { name, parentId } = req.body;
+
+    if (!name) {
+      return res.status(400).json({ error: 'Must provide a name' });
+    }
+
+    const response = await req.drive.files.create({
+      requestBody: {
+        name: name,
+        mimeType: 'application/vnd.google-apps.folder',
+        parents: parentId ? [parentId] : []
+      },
+      fields: 'id, name, webViewLink',
+    });
+
+    res.json(response.data);
+  } catch (error) {
+    if (error?.message?.includes("Request had invalid authentication credentials.")) {
+      res.status(401).json({ error: 'Invalid Token' })
+    }
+    console.error('Error creating folder:', error);
+    res.status(500).json({ error: 'Failed to create folder' });
+  }
+});
+
 // Copy file from template to user's drive
 router.post('/files/copy', getGoogleDriveClient, async (req, res) => {
   try {
-    const { fileName, email } = req.body;
+    const { fileName, email, parentFolderId } = req.body;
 
     console.log("API... ")
     console.log("templateId ==> ", templateId)
@@ -50,6 +77,10 @@ router.post('/files/copy', getGoogleDriveClient, async (req, res) => {
 
     if (!templateId) {
       return res.status(400).json({ error: 'No template file found.' });
+    }
+
+    if (!parentFolderId) {
+      return res.status(400).json({ error: 'Must provide a parent folder id.' });
     }
 
     if (!email) {
@@ -65,8 +96,18 @@ router.post('/files/copy', getGoogleDriveClient, async (req, res) => {
       parentFolderId
     );
 
+    console.log('copy template result ==> ', result)
 
-    console.log('final result ==> ', result)
+    console.log('Attempting file transfer...')
+
+    await drive.files.update({
+      fileId: newFileId,
+      addParents: parentFolderId,
+      supportsAllDrives: true,
+      fields: 'id, parents'
+    });
+    console.log('File moved to parent folder:', parentFolderId);
+
 
     res.json(result)
   } catch (error) {
@@ -85,7 +126,7 @@ router.post('/files/copy', getGoogleDriveClient, async (req, res) => {
 });
 
 // Update multiple cells in the Google Sheet
-router.put('/sheets/:fileId/updates/', async (req, res) => {
+router.put('/sheets/:fileId/updates/', getGoogleDriveClient, async (req, res) => {
   try {
     const { fileId } = req.params;
     const { updates } = req.body;
@@ -94,7 +135,71 @@ router.put('/sheets/:fileId/updates/', async (req, res) => {
       return res.status(400).json({ error: 'Invalid updates format' });
     }
 
-    const response = await updateBatchCells(fileId, updates)
+    const { sheets } = req.sheets;
+    console.log('Updating sheet cells...');
+
+    const fetchFileResponse = await sheets.spreadsheets.get({
+      spreadsheetId: fileId
+    });
+
+    console.log('Available sheets:', fetchFileResponse.data.sheets);
+
+    const sheetId = fetchFileResponse.data.sheets[0].properties.sheetId
+
+    // Prepare the update requests
+    const requests = updates.map(update => {
+      const { column, values, startRow = 4 } = update; // Default to row 4 (0-indexed)
+
+      // Convert 0-based indexing to 1-based for spreadsheet
+      const startRowIndex = startRow;
+      const endRowIndex = startRow + values.length;
+
+      // Create rows for each "column" update
+      const rows = values.map((value, index) => {
+        // Handle different types of values
+        let userEnteredValue;
+
+        if (typeof value === 'number') {
+          userEnteredValue = { numberValue: value };
+        } else if (typeof value === 'string' && !isNaN(Number(value)) && isFinite(value)) {
+          // If it's a string that represents a number
+          userEnteredValue = { numberValue: Number(value) };
+        } else {
+          // Treat as text
+          userEnteredValue = { stringValue: String(value) };
+        }
+
+        return {
+          values: [
+            {
+              userEnteredValue
+            }
+          ]
+        };
+      });
+
+      return {
+        updateCells: {
+          range: {
+            sheetId: sheetId,
+            startRowIndex: startRowIndex,
+            endRowIndex: endRowIndex,
+            startColumnIndex: column,
+            endColumnIndex: column + 1
+          },
+          rows: rows,
+          fields: 'userEnteredValue'
+        }
+      };
+    });
+
+    // Execute the batch update
+    const response = await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: fileId,
+      requestBody: {
+        requests: requests
+      }
+    });
 
     console.log('response ==> ', response.data)
 

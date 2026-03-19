@@ -21,6 +21,8 @@ export const signInWithGoogle = async (): Promise<User> => {
     googleProvider.setCustomParameters({
       prompt: 'select_account'
     });
+    googleProvider.addScope('https://www.googleapis.com/auth/drive.file'); // For Drive folder creation
+    googleProvider.addScope('https://www.googleapis.com/auth/spreadsheets'); // For Sheets updates
 
     const result = await signInWithPopup(auth, googleProvider);
     const user = result.user;
@@ -31,9 +33,6 @@ export const signInWithGoogle = async (): Promise<User> => {
     const refreshToken = result._tokenResponse.refreshToken;
     const expiresIn = result._tokenResponse.expiresIn;
 
-    console.log('Result ==> ', result)
-    console.log('access token ==> ', accessToken)
-    console.log('Refresh Token ==> ', refreshToken)
 
     // Create user document if it doesn't exist
     const userRef = doc(db, 'users', user.uid);
@@ -89,3 +88,13 @@ export const getUserAccessToken = async (userId: string): Promise<string | null>
     return null;
   }
 };
+
+export const reauthenticate = async (): Promise<void> => {
+  try {
+    console.log('attempting signout....');
+    await signOut(auth)
+    await signInWithGoogle()
+  } catch (error: any) {
+    throw new Error(error.message);
+  }
+}

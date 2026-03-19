@@ -1,4 +1,6 @@
+import googleDriveAPI from '../lib/googleDriveClient';
 import type { FirestoreAccount } from '../types/accountTypes';
+import type { Folder } from '../types/folderTypes';
 import type { FirestoreTransaction } from '../types/transactionTypes';
 import { db } from './firebase'; // Assuming your firebase initialization is in firebase.ts
 import { collection, query, where, getDocs, updateDoc, deleteDoc, doc, setDoc } from 'firebase/firestore';
@@ -94,5 +96,47 @@ export async function deleteFirestoreAccount(accountId: string) {
     console.log('Account deleted successfully!');
   } catch (error) {
     console.error('Error deleting account:', error);
+  }
+}
+
+// Drive Folders
+export async function createFirestoreFolder(folder: Folder) {
+  try {
+    const foldersCollection = collection(db, 'folders');
+    await setDoc(doc(foldersCollection, folder.id), folder);
+  } catch (error) {
+    console.error('Error creating folder:', error);
+    throw error;
+  }
+}
+
+export async function loadUserFolders(userId: string) {
+  try {
+    const foldersCollection = collection(db, 'folders');
+    const q = query(foldersCollection, where('userId', '==', userId));
+    const querySnapshot = await getDocs(q);
+    const loadedFolders: Folder[] = [];
+    querySnapshot.forEach((doc) => {
+      loadedFolders.push({ ...doc.data() } as Folder);
+    });
+    if (loadedFolders.length === 0) {
+      const newFolder = await googleDriveAPI.createFolder("Bookr App", '')
+      loadedFolders.push(newFolder)
+    }
+    return loadedFolders;
+  } catch (error) {
+    console.error('Error loading folders:', error);
+    return [];
+  }
+}
+
+export async function updateFolder(folder: Folder) {
+  try {
+    const folderDocRef = doc(db, 'folders', folder.id);
+    await updateDoc(folderDocRef, { ...folder });
+    console.log('Folder updated successfully!');
+  } catch (error) {
+    console.error('Error updating folder:', error);
+    throw error;
   }
 }
