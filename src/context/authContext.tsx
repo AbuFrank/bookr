@@ -15,6 +15,7 @@ import { AccountActions, type FirestoreAccount } from '../types/accountTypes';
 import googleDriveAPI from '../lib/googleDriveClient';
 import { FolderActions, type Folder } from '../types/folderTypes';
 import folderReducer from '../reducer/folderReducer';
+import type { Ledger } from '../types/ledgerTypes';
 
 interface User {
   uid: string;
@@ -38,17 +39,22 @@ interface AuthContextType {
   accounts: FirestoreAccount[];
   accountsLoading: boolean;
   transactionsLoading: boolean;
+  ledgerLoading: boolean;
+  currentLedger: Ledger;
   addAccount: (acount: FirestoreAccount) => void;
   updateAccount: (updatedAccount: FirestoreAccount) => void;
   deleteAccount: (accountId: string) => void;
+  // Folder-related functions
   folders: Folder[];
   currentParentFolder: Folder;
   currentFolderChildren: Folder[];
   addFolder: (folder: Folder) => void;
   updateFolder: (folder: Folder) => void;
   deleteFolder: (folderId: string) => void;
-  setCurrentFolderParent: (folder: Folder) => void;
+  setFolderCurrentparent: (folder: Folder) => void;
   setFolders: (folders: Folder[]) => void;
+  currentParent: string | null;
+  setCurrentParent: (parentId: string | null) => void;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -63,6 +69,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState<boolean>(true);
   const [accountsLoading, setAccountsLoading] = useState<boolean>(false);
   const [transactionsLoading, setTransactionsLoading] = useState<boolean>(false);
+  const [ledgerLoading, setLedgerLoading] = useState<boolean>(false);
+  const [currentLedger, setCurrentLedger] = useState<Ledger | null>(null)
   const [transactionState, dispatchTransaction] = useReducer(transactionReducer, { transactions: [] });
   const [accountState, dispatchAccount] = useReducer(accountReducer, { accounts: [] })
   const [folderState, dispatchFolder] = useReducer(folderReducer, { folders: [], currentChildren: [], currentParent: {} });
@@ -166,12 +174,46 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const deleteFolder = (folderId: string) => {
     dispatchFolder({ type: FolderActions.DELETE_FOLDER, payload: folderId });
   };
-  const setCurrentFolderParent = (folder: Folder) => {
+  const setFolderCurrentparent = (folder: Folder) => {
     dispatchFolder({ type: FolderActions.SET_CURRENT_PARENT, payload: folder });
+  };
+  const setFolderCurrentChildren = (children: any[]) => {
+    dispatchFolder({ type: FolderActions.SET_CURRENT_CHILDREN, payload: children });
   };
   const setFolders = (newFolders: Folder[]) => {
     dispatchFolder({ types: FolderActions.SET_FOLDERS, payload: newFolders })
   }
+
+  const addLedger = async (ledger: FirestoreAccount) => {
+    setLedgerLoading(true);
+
+
+    const copiedFile = await googleDriveAPI.copyReportTemplate(folderState?.currentParent?.id);
+
+    const fileId = copiedFile.fileId
+
+    // TODO file name?
+    setCurrentLedger(fileId)
+
+    console.log('Copied file:', copiedFile);
+    console.log('Copied file ID:', fileId);
+
+    setLedgerLoading(false)
+  };
+
+  const updateLedger = async (updatedAccount: FirestoreAccount) => {
+    setAccountsLoading(true)
+    await updateFirestoreAccount(updatedAccount);
+    dispatchAccount({ type: AccountActions.UPDATE_ACCOUNT, payload: updatedAccount });
+    setAccountsLoading(false)
+  };
+
+  const deleteLedger = async (accountId: string) => {
+    setAccountsLoading(true)
+    await deleteFirestoreAccount(accountId)
+    dispatchAccount({ type: AccountActions.DELETE_ACCOUNT, payload: accountId });
+    setAccountsLoading(false)
+  };
 
 
   const loginWithGoogle = async (): Promise<void> => {
@@ -214,8 +256,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     addFolder,
     updateFolder,
     deleteFolder,
-    setCurrentFolderParent,
+    setFolderCurrentparent,
     setFolders,
+    currentLedger,
+    ledgerLoading,
   };
 
   return (

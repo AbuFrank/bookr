@@ -13,7 +13,7 @@ const FolderTree: React.FC<FolderTreeProps> = ({ folders, className = '' }) => {
   if (!folders || folders.length === 0) return null;
 
   const {
-    setCurrentFolderParent,
+    setFolderCurrentparent,
   } = useAuth();
 
   const navigate = useNavigate();
@@ -21,7 +21,7 @@ const FolderTree: React.FC<FolderTreeProps> = ({ folders, className = '' }) => {
   const handleFolderClick = (folder: Folder) => {
     console.log('selected folder parent ===> ', folder)
     // Set the current folder parent to this folder
-    setCurrentFolderParent(folder);
+    setFolderCurrentparent(folder);
 
     // Navigate to transactions page
     navigate('/transactions');

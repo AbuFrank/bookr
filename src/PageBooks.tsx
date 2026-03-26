@@ -133,9 +133,9 @@ const PageBooks = () => {
       setFiscalYear('')
       setGroupValue('')
 
-    } catch (error) {
+    } catch (error: any) {
       console.log('ERROR +++> ', error)
-      if (error.message.includes('Token expired')) {
+      if (error?.message.includes('Token expired')) {
         console.log('Access token invalid');
 
         // Show a button to re-authenticate instead of auto-reauth
