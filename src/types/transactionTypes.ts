@@ -17,6 +17,7 @@ export interface FirestoreTransaction {
   dateCreated: Date;
   paidTo: string;
   accountId: string | null;
+  ledgerId: string | null;
   value: number;
   type: 'expense' | 'deposit';
   subType: 'non-deductible' | 'non-income' | null

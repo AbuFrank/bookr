@@ -8,13 +8,15 @@ import {
 
 import { listenToAuthState } from '../firebase/firebase';
 import { transactionReducer } from '../reducer/transactionReducer';
-import { createAccount, createTransaction, deleteFirestoreAccount, deleteFirestoreTransaction, loadAccounts, loadTransactions, loadUserFolders, updateFirestoreAccount, updateFirestoreTransaction } from '../firebase/crud';
+import { createAccount, createLedger, createTransaction, deleteFirestoreAccount, deleteFirestoreTransaction, loadAccounts, loadLedgers, loadTransactions, loadUserFolders, updateFirestoreAccount, updateFirestoreTransaction } from '../firebase/crud';
 import { TransactionActions, type FirestoreTransaction } from '../types/transactionTypes';
 import accountReducer from '../reducer/accountReducer';
 import { AccountActions, type FirestoreAccount } from '../types/accountTypes';
 import googleDriveAPI from '../lib/googleDriveClient';
 import { FolderActions, type Folder } from '../types/folderTypes';
 import folderReducer from '../reducer/folderReducer';
+import { LedgerActions, type FirestoreLedger } from '../types/ledgerTypes';
+import ledgerReducer from '../reducer/ledgerReducer';
 
 interface User {
   uid: string;
@@ -41,8 +43,12 @@ interface AuthContextType {
   addAccount: (acount: FirestoreAccount) => void;
   updateAccount: (updatedAccount: FirestoreAccount) => void;
   deleteAccount: (accountId: string) => void;
+  ledgers: FirestoreLedger[];
+  ledgersLoading: boolean;
+  addLedger: (ledger: FirestoreLedger) => Promise<void>;
+  currentLedger: FirestoreLedger | null;
   folders: Folder[];
-  currentParentFolder: Folder;
+  currentParentFolder: Folder | null;
   currentFolderChildren: Folder[];
   addFolder: (folder: Folder) => void;
   updateFolder: (folder: Folder) => void;
@@ -61,11 +67,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
-  const [accountsLoading, setAccountsLoading] = useState<boolean>(false);
   const [transactionsLoading, setTransactionsLoading] = useState<boolean>(false);
   const [transactionState, dispatchTransaction] = useReducer(transactionReducer, { transactions: [] });
+  const [accountsLoading, setAccountsLoading] = useState<boolean>(false);
   const [accountState, dispatchAccount] = useReducer(accountReducer, { accounts: [] })
-  const [folderState, dispatchFolder] = useReducer(folderReducer, { folders: [], currentChildren: [], currentParent: {} });
+  const [ledgersLoading, setLedgersLoading] = useState<boolean>(false);
+  const [ledgerState, dispatchLedger] = useReducer(ledgerReducer, {
+    ledgers: [],
+    currentLedger: null,
+  });
+  const [folderState, dispatchFolder] = useReducer(folderReducer, {
+    folders: [],
+    currentChildren: [],
+    currentParent: null
+  });
 
   const navigate = useNavigate();
 
@@ -90,11 +105,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           Promise.all([
             loadTransactions(firebaseUser.uid),
             loadAccounts(firebaseUser.uid),
+            loadLedgers(firebaseUser.uid),
             loadUserFolders(firebaseUser.uid),
           ])
-            .then(([initialTransactions, initialAccounts, initialFolders]) => {
+            .then(([initialTransactions, initialAccounts, initialLedgers, initialFolders]) => {
               dispatchTransaction({ type: TransactionActions.SET_TRANSACTIONS, payload: initialTransactions })
               dispatchAccount({ type: AccountActions.SET_ACCOUNTS, payload: initialAccounts })
+              dispatchLedger({ type: LedgerActions.SET_LEDGERS, payload: initialLedgers });
               dispatchFolder({ type: FolderActions.SET_FOLDERS, payload: initialFolders })
               setLoading(false);
             })
@@ -170,8 +187,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     dispatchFolder({ type: FolderActions.SET_CURRENT_PARENT, payload: folder });
   };
   const setFolders = (newFolders: Folder[]) => {
-    dispatchFolder({ types: FolderActions.SET_FOLDERS, payload: newFolders })
+    dispatchFolder({ type: FolderActions.SET_FOLDERS, payload: newFolders })
   }
+
+  const addLedger = async (ledger: FirestoreLedger) => {
+    setLedgersLoading(true);
+    await createLedger(ledger);
+    dispatchLedger({ type: LedgerActions.ADD_LEDGER, payload: ledger });
+    setLedgersLoading(false);
+  };
 
 
   const loginWithGoogle = async (): Promise<void> => {
@@ -208,6 +232,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     addAccount,
     updateAccount,
     deleteAccount,
+    ledgers: ledgerState.ledgers,
+    currentLedger: ledgerState.currentLedger,
+    ledgersLoading,
+    addLedger,
     folders: folderState.folders,
     currentParentFolder: folderState.currentParent,
     currentFolderChildren: folderState.currentChildren,
