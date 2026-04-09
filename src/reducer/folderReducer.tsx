@@ -2,14 +2,16 @@ import { FolderActions, type Folder } from "../types/folderTypes";
 
 type FolderState = {
   folders: Folder[];
+  currentBook: Folder | null;
+  currentYear: Folder | null;
   currentChildren: Folder[];
-  currentParent: Folder | null;
 };
 
 const initialState: FolderState = {
   folders: [],
+  currentBook: null,
+  currentYear: null,
   currentChildren: [],
-  currentParent: null,
 };
 
 const folderReducer = (state: FolderState = initialState, action: any): FolderState => {
@@ -25,13 +27,13 @@ const folderReducer = (state: FolderState = initialState, action: any): FolderSt
         folder.id === action.payload.id ? action.payload : folder
       );
 
-      const updatedCurrentParent =
-        state.currentParent?.id === action.payload.id
+      const updatedFiscalYear =
+        state.currentYear?.id === action.payload.id
           ? action.payload
-          : state.currentParent;
+          : state.currentYear;
 
-      const updatedChildren = updatedCurrentParent
-        ? updatedFolders.filter((folder) => folder.parentId === updatedCurrentParent.id)
+      const updatedChildren = updatedFiscalYear
+        ? updatedFolders.filter((folder) => folder.parentId === updatedFiscalYear.id)
         : state.currentChildren.map((child) =>
           child.id === action.payload.id ? action.payload : child
         );
@@ -39,7 +41,7 @@ const folderReducer = (state: FolderState = initialState, action: any): FolderSt
       return {
         ...state,
         folders: updatedFolders,
-        currentParent: updatedCurrentParent,
+        currentYear: updatedFiscalYear,
         currentChildren: updatedChildren,
       };
     }
@@ -50,7 +52,7 @@ const folderReducer = (state: FolderState = initialState, action: any): FolderSt
       );
 
       const nextCurrentParent =
-        state.currentParent?.id === action.payload ? null : state.currentParent;
+        state.currentYear?.id === action.payload ? null : state.currentYear;
 
       const nextChildren = nextCurrentParent
         ? filteredFolders.filter((folder) => folder.parentId === nextCurrentParent.id)
@@ -59,15 +61,15 @@ const folderReducer = (state: FolderState = initialState, action: any): FolderSt
       return {
         ...state,
         folders: filteredFolders,
-        currentParent: nextCurrentParent,
+        currentYear: nextCurrentParent,
         currentChildren: nextChildren,
       };
     }
 
     case FolderActions.SET_FOLDERS: {
-      const nextChildren = state.currentParent
+      const nextChildren = state.currentYear
         ? action.payload.filter(
-          (folder: Folder) => folder.parentId === state.currentParent?.id
+          (folder: Folder) => folder.parentId === state.currentYear?.id
         )
         : [];
 
@@ -78,7 +80,7 @@ const folderReducer = (state: FolderState = initialState, action: any): FolderSt
       };
     }
 
-    case FolderActions.SET_CURRENT_PARENT: {
+    case FolderActions.SET_CURRENT_YEAR: {
       const selectedParent: Folder | null = action.payload;
       const children = selectedParent
         ? state.folders.filter((folder) => folder.parentId === selectedParent.id)
@@ -86,8 +88,17 @@ const folderReducer = (state: FolderState = initialState, action: any): FolderSt
 
       return {
         ...state,
-        currentParent: selectedParent,
+        currentYear: selectedParent,
         currentChildren: children,
+      };
+    }
+
+    case FolderActions.SET_CURRENT_BOOK: {
+      const selectedBook: Folder | null = action.payload;
+
+      return {
+        ...state,
+        currentBook: selectedBook,
       };
     }
 

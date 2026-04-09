@@ -46,14 +46,18 @@ interface AuthContextType {
   ledgers: FirestoreLedger[];
   ledgersLoading: boolean;
   addLedger: (ledger: FirestoreLedger) => Promise<void>;
+  setCurrentLedger: (ledger: FirestoreLedger) => void;
   currentLedger: FirestoreLedger | null;
+  currentLedgers: FirestoreLedger[] | [];
   folders: Folder[];
-  currentParentFolder: Folder | null;
+  currentBook: Folder | null;
+  currentFiscalYear: Folder | null;
   currentFolderChildren: Folder[];
   addFolder: (folder: Folder) => void;
   updateFolder: (folder: Folder) => void;
   deleteFolder: (folderId: string) => void;
-  setCurrentFolderParent: (folder: Folder) => void;
+  setCurrentFiscalYear: (folder: Folder) => void;
+  setCurrentBook: (folder: Folder) => void;
   setFolders: (folders: Folder[]) => void;
 }
 
@@ -70,16 +74,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [transactionsLoading, setTransactionsLoading] = useState<boolean>(false);
   const [transactionState, dispatchTransaction] = useReducer(transactionReducer, { transactions: [] });
   const [accountsLoading, setAccountsLoading] = useState<boolean>(false);
-  const [accountState, dispatchAccount] = useReducer(accountReducer, { accounts: [] })
+  const [accountState, dispatchAccount] = useReducer(accountReducer, { accounts: [], currentAccounts: [] })
   const [ledgersLoading, setLedgersLoading] = useState<boolean>(false);
   const [ledgerState, dispatchLedger] = useReducer(ledgerReducer, {
     ledgers: [],
+    currentLedgers: [],
     currentLedger: null,
   });
   const [folderState, dispatchFolder] = useReducer(folderReducer, {
     folders: [],
     currentChildren: [],
-    currentParent: null
+    currentYear: null,
+    currentBook: null,
   });
 
   const navigate = useNavigate();
@@ -111,7 +117,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             .then(([initialTransactions, initialAccounts, initialLedgers, initialFolders]) => {
               dispatchTransaction({ type: TransactionActions.SET_TRANSACTIONS, payload: initialTransactions })
               dispatchAccount({ type: AccountActions.SET_ACCOUNTS, payload: initialAccounts })
-              dispatchLedger({ type: LedgerActions.SET_LEDGERS, payload: initialLedgers });
+              dispatchLedger({ type: LedgerActions.SET_LEDGERS, payload: initialLedgers })
               dispatchFolder({ type: FolderActions.SET_FOLDERS, payload: initialFolders })
               setLoading(false);
             })
@@ -130,6 +136,37 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     return unsubscribe;
   }, []);
+
+  useEffect(() => {
+    console.log('new current year => ', folderState.currentYear)
+    if (!folderState?.currentYear?.id || !ledgerState?.ledgers?.length) {
+      return
+    }
+    console.log('have fiscal year, book, and ledgers...')
+
+    // Set current ledgers based on current folder parent
+    // Set current ledger to most recent by default
+    const fiscalYearLedgers = ledgerState.ledgers.filter(ledger => ledger.parentFolderId === folderState?.currentYear?.id)
+    const dateSortedLedgers = fiscalYearLedgers.sort(
+      (a, b) => new Date(b.dateCreated).getTime() - new Date(a.dateCreated).getTime()
+    )
+    dispatchLedger({ type: LedgerActions.SET_CURRENT_LEDGERS, payload: dateSortedLedgers })
+    dispatchLedger({ type: LedgerActions.SET_CURRENT_LEDGER, payload: dateSortedLedgers[0] })
+
+  }, [folderState.currentYear, ledgerState.ledgers])
+
+  useEffect(() => {
+    console.log('new current book accounts useEffect triggered => ', { currentBook: folderState.currentBook })
+    if (!folderState.currentBook?.id || !accountState.accounts.length) {
+      console.log('no current book or accounts')
+      return
+    }
+
+    // Set current accounts based on current book
+    const bookAccounts = accountState.accounts.filter((account: FirestoreAccount) => account.bookId === folderState.currentBook?.id)
+    dispatchAccount({ type: AccountActions.SET_CURRENT_ACCOUNTS, payload: bookAccounts })
+
+  }, [folderState.currentBook, accountState.accounts])
 
   const addTransaction = async (transaction: FirestoreTransaction) => {
     setTransactionsLoading(true)
@@ -183,8 +220,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const deleteFolder = (folderId: string) => {
     dispatchFolder({ type: FolderActions.DELETE_FOLDER, payload: folderId });
   };
-  const setCurrentFolderParent = (folder: Folder) => {
-    dispatchFolder({ type: FolderActions.SET_CURRENT_PARENT, payload: folder });
+  const setCurrentFiscalYear = (folder: Folder) => {
+    dispatchFolder({ type: FolderActions.SET_CURRENT_YEAR, payload: folder });
+  };
+  const setCurrentBook = (folder: Folder) => {
+    dispatchFolder({ type: FolderActions.SET_CURRENT_BOOK, payload: folder });
   };
   const setFolders = (newFolders: Folder[]) => {
     dispatchFolder({ type: FolderActions.SET_FOLDERS, payload: newFolders })
@@ -195,6 +235,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     await createLedger(ledger);
     dispatchLedger({ type: LedgerActions.ADD_LEDGER, payload: ledger });
     setLedgersLoading(false);
+  };
+  const setCurrentLedger = (ledger: FirestoreLedger) => {
+    console.log('set current ledger triggered==> ', ledger)
+    dispatchLedger({ type: LedgerActions.SET_CURRENT_LEDGER, payload: ledger });
   };
 
 
@@ -232,17 +276,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     addAccount,
     updateAccount,
     deleteAccount,
-    ledgers: ledgerState.ledgers,
-    currentLedger: ledgerState.currentLedger,
     ledgersLoading,
+    currentLedger: ledgerState.currentLedger,
+    currentLedgers: ledgerState.currentLedgers,
+    ledgers: ledgerState.currentLedgers,
     addLedger,
+    setCurrentLedger,
     folders: folderState.folders,
-    currentParentFolder: folderState.currentParent,
+    currentFiscalYear: folderState.currentYear,
+    currentBook: folderState.currentBook,
     currentFolderChildren: folderState.currentChildren,
     addFolder,
     updateFolder,
     deleteFolder,
-    setCurrentFolderParent,
+    setCurrentFiscalYear,
+    setCurrentBook,
     setFolders,
   };
 

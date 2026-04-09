@@ -13,15 +13,17 @@ const FolderTree: React.FC<FolderTreeProps> = ({ folders, className = '' }) => {
   if (!folders || folders.length === 0) return null;
 
   const {
-    setCurrentFolderParent,
+    setCurrentFiscalYear,
+    setCurrentBook,
   } = useAuth();
 
   const navigate = useNavigate();
 
-  const handleFolderClick = (folder: Folder) => {
-    console.log('selected folder parent ===> ', folder)
-    // Set the current folder parent to this folder
-    setCurrentFolderParent(folder);
+  const handleFolderClick = (book: Folder, year: Folder) => {
+    console.log('selected folder parent ===> ', year)
+    // Set the current book and fiscal year
+    setCurrentFiscalYear(year);
+    setCurrentBook(book);
 
     // Navigate to transactions page
     navigate('/transactions');
@@ -50,7 +52,7 @@ const FolderTree: React.FC<FolderTreeProps> = ({ folders, className = '' }) => {
               <ul className="ml-6 mt-1 space-y-1">
                 {folder.children.map(child => (
                   <li key={child.id} className="flex items-center cursor-pointer text-blue-400 hover:text-blue-500 hover:underline transition-colors text-lg"
-                    onClick={() => handleFolderClick(child)}>
+                    onClick={() => handleFolderClick(folder, child)}>
                     <svg
                       className="w-3 h-3 mr-2"
                       fill="none"

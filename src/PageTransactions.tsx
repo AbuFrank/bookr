@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Header from './components/Header';
 import StatCards from './components/StatCards';
 import FormTransaction from './components/FormTransaction';
@@ -9,13 +9,7 @@ import type { FirestoreTransaction } from './types/transactionTypes';
 import { findAccountById, generateFirestoreId } from './lib/firestore';
 import ReportTrigger from './components/ReportTrigger';
 import type { FirestoreLedger } from './types/ledgerTypes';
-
-type LedgerDraft = {
-  id: string;
-  name: string;
-  description?: string;
-  dateCreated: Date;
-};
+import { useNavigate } from 'react-router-dom';
 
 const Transactions: React.FC = () => {
   const [subType, setSubType] = useState<'non-deductible' | 'non-income' | null>(null);
@@ -54,18 +48,26 @@ const Transactions: React.FC = () => {
     loading,
     transactionsLoading,
     accountsLoading,
+    currentFiscalYear,
+    currentBook,
     ledgers,
     addLedger,
-    currentLedger
+    currentLedger,
+    setCurrentLedger,
   } = useAuth();
 
-  const [selectedLedgerId, setSelectedLedgerId] = useState<string | null>(
-    ledgers[0]?.id ?? null
-  );
+  const navigate = useNavigate()
 
-  const selectedLedger = useMemo(
-    () => ledgers.find((ledger) => ledger.id === selectedLedgerId) ?? null,
-    [ledgers, selectedLedgerId]
+  useEffect(() => {
+    // Navigate to books if no current year or book
+    if (!loading && !(currentFiscalYear?.id && currentBook)) {
+      navigate('/books')
+    }
+  }, [loading, currentFiscalYear, currentBook])
+
+  const currentLedgerTransactions = useMemo(
+    () => transactions.filter((transaction) => transaction.ledgerId === currentLedger?.id) ?? null,
+    [currentLedger, transactions]
   );
 
   const sortedLedgers = useMemo(() => {
@@ -93,10 +95,6 @@ const Transactions: React.FC = () => {
     setNewLedger(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleLedgerDateChange = (date: Date | null) => {
-    setNewLedger(prev => ({ ...prev, dateCreated: date || new Date() }));
-  };
-
   const handleAccountFormChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
@@ -119,12 +117,19 @@ const Transactions: React.FC = () => {
 
     if (!newLedger.name.trim()) return;
 
+    if (!currentFiscalYear?.id || !currentBook) {
+      alert('No parent folder selected. Contact support. Redirecting to /books ...')
+      navigate('/books')
+      return
+    }
+
     const ledgerData: FirestoreLedger = {
       id: generateFirestoreId('ledgers'),
       userId: user?.uid || 'unknown',
       name: newLedger.name.trim(),
       description: newLedger.description.trim(),
-      dateCreated: newLedger.dateCreated,
+      dateCreated: new Date(),
+      parentFolderId: currentFiscalYear.id,
     };
 
     try {
@@ -134,7 +139,7 @@ const Transactions: React.FC = () => {
         description: '',
         dateCreated: new Date(),
       });
-      setSelectedLedgerId(ledgerData.id);
+      setCurrentLedger(ledgerData);
       setShowLedgerForm(false);
     } catch (error) {
       console.error('Error creating ledger:', error);
@@ -143,6 +148,10 @@ const Transactions: React.FC = () => {
 
   const handleTransactionSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    console.log('transaction submit data ==> ',
+      currentLedger
+    )
 
     if (
       formData.paidTo &&
@@ -185,9 +194,10 @@ const Transactions: React.FC = () => {
   };
 
   const handleAccountSubmit = async () => {
-    if (newAccount.accountName) {
+    if (newAccount.accountName && currentBook?.id) {
       const accountData: FirestoreAccount = {
         id: generateFirestoreId('accounts'),
+        bookId: currentBook?.id,
         userId: user?.uid || 'unknown',
         dateCreated: new Date(),
         accountName: newAccount.accountName,
@@ -241,6 +251,8 @@ const Transactions: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
+      {console.log('current book ', currentBook)}
+      {console.log('current year ', currentFiscalYear)}
 
       <main className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
@@ -288,7 +300,7 @@ const Transactions: React.FC = () => {
                     />
                   </div>
 
-                  <div>
+                  {/* <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Date Created
                     </label>
@@ -303,7 +315,7 @@ const Transactions: React.FC = () => {
                       }
                       className="w-full rounded-lg border border-gray-300 px-3 py-2"
                     />
-                  </div>
+                  </div> */}
 
                   <div className="flex gap-2">
                     <button
@@ -330,12 +342,12 @@ const Transactions: React.FC = () => {
                   </div>
                 ) : (
                   sortedLedgers.map((ledger) => {
-                    const isSelected = selectedLedgerId === ledger.id;
+                    const isSelected = currentLedger?.id === ledger.id;
 
                     return (
                       <button
                         key={ledger.id}
-                        onClick={() => setSelectedLedgerId(ledger.id)}
+                        onClick={() => setCurrentLedger(ledger)}
                         className={`w-full text-left rounded-lg border p-4 transition cursor-pointer ${isSelected
                           ? 'border-primary bg-blue-50'
                           : 'border-gray-200 hover:bg-gray-50'
@@ -356,7 +368,7 @@ const Transactions: React.FC = () => {
             </div>
           </aside>
 
-          {/* Right column: selected ledger fields + transactions */}
+          {/* Right column: selected stats, ledger fields, and transactions */}
           <section className="xl:col-span-9 space-y-6">
             {/* Right column: stats */}
             <aside>
@@ -382,10 +394,10 @@ const Transactions: React.FC = () => {
               <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-6">
                 <div>
                   <h1 className="text-2xl font-bold text-gray-800">
-                    {selectedLedger ? selectedLedger.name : 'Select a ledger'}
+                    {currentLedger ? currentLedger.name : 'Select a ledger'}
                   </h1>
                   <p className="text-gray-500 mt-1">
-                    {selectedLedger?.description || 'Choose a ledger from the left to work inside it.'}
+                    {currentLedger?.description || 'Choose a ledger from the left to work inside it.'}
                   </p>
                 </div>
 
@@ -413,15 +425,15 @@ const Transactions: React.FC = () => {
                 <div className="rounded-lg border border-gray-200 p-4">
                   <div className="text-gray-500 mb-1">Ledger Name</div>
                   <div className="font-medium text-gray-900">
-                    {selectedLedger?.name || '—'}
+                    {currentLedger?.name || '—'}
                   </div>
                 </div>
 
                 <div className="rounded-lg border border-gray-200 p-4">
                   <div className="text-gray-500 mb-1">Created</div>
                   <div className="font-medium text-gray-900">
-                    {selectedLedger
-                      ? new Date(selectedLedger.dateCreated).toLocaleDateString()
+                    {currentLedger
+                      ? new Date(currentLedger.dateCreated).toLocaleDateString()
                       : '—'}
                   </div>
                 </div>
@@ -429,7 +441,7 @@ const Transactions: React.FC = () => {
                 <div className="rounded-lg border border-gray-200 p-4 md:col-span-2">
                   <div className="text-gray-500 mb-1">Description</div>
                   <div className="font-medium text-gray-900">
-                    {selectedLedger?.description || 'No description yet'}
+                    {currentLedger?.description || 'No description yet'}
                   </div>
                 </div>
               </div>
@@ -462,14 +474,11 @@ const Transactions: React.FC = () => {
             <div className="bg-white rounded-xl shadow-md p-6">
               <div className="mb-4">
                 <h2 className="text-xl font-bold text-gray-800">Transactions</h2>
-                <p className="text-sm text-gray-500 mt-1">
-                  These are still global transactions until a real ledgerId is added to each transaction.
-                </p>
               </div>
 
               <TransactionList
                 accounts={accounts}
-                transactions={transactions}
+                transactions={currentLedgerTransactions}
                 deleteTransaction={deleteTransaction}
                 transactionsLoading={transactionsLoading}
               />

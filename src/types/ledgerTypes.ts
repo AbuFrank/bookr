@@ -4,6 +4,7 @@ export interface FirestoreLedger {
     name: string;
     description: string;
     dateCreated: Date;
+    parentFolderId: string;
 }
 
 export interface FormLedgerData {
@@ -17,5 +18,6 @@ export const LedgerActions = {
     ADD_LEDGER: 'ADD_LEDGER',
     UPDATE_LEDGER: 'UPDATE_LEDGER',
     DELETE_LEDGER: 'DELETE_LEDGER',
-    SET_CURRENT_LEDGER: 'SET_CURRENT_LEDGER'
+    SET_CURRENT_LEDGER: 'SET_CURRENT_LEDGER',
+    SET_CURRENT_LEDGERS: 'SET_CURRENT_LEDGERS'
 }

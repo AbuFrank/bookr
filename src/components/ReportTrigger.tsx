@@ -3,19 +3,19 @@ import { useAuth } from '../hooks/useAuth';
 import googleDriveAPI from '../lib/googleDriveClient';
 
 const ReportTrigger: React.FC = () => {
-  const { user, isAuthenticated, transactions, currentParentFolder } = useAuth();
+  const { user, isAuthenticated, transactions, currentFiscalYear } = useAuth();
   const [isProcessing, setIsProcessing] = useState(false);
   const [message, setMessage] = useState('');
   const [currentFile, setCurrentFile] = useState('')
 
   const handleGenerateReport = async () => {
-    if (!isAuthenticated || !user || isProcessing) return;
+    if (!isAuthenticated || !user || isProcessing || !currentFiscalYear?.id) return;
 
     try {
       setIsProcessing(true);
 
 
-      const copiedFile = await googleDriveAPI.copyReportTemplate(currentParentFolder.id);
+      const copiedFile = await googleDriveAPI.copyReportTemplate(currentFiscalYear.id);
 
       const fileId = copiedFile.fileId
 
