@@ -1,5 +1,5 @@
-export interface FirestoreLedger {
-    id: string;
+export interface LedgerInput {
+    id: string,
     userId: string;
     name: string;
     description: string;
@@ -7,7 +7,11 @@ export interface FirestoreLedger {
     parentFolderId: string;
     runningTotals: {
         [accountId: string]: number;
-    };
+    } | null;
+}
+
+export interface Ledger extends LedgerInput {
+    fileId: string
 }
 
 export interface FormLedgerData {

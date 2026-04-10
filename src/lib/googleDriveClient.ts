@@ -21,7 +21,7 @@ interface GoogleDriveAPI {
   storeAccessToken: (accessToken: string) => Promise<void>;
   clearAccessToken: () => Promise<void>;
   refreshAccessToken: () => Promise<string>;
-  copyReportTemplate: (parentFolderId?: string) => Promise<DriveFile>;
+  copyReportTemplate: (parentFolderId: string, fileName: string) => Promise<DriveFile>;
 }
 
 let currentUser: User | null = null
@@ -95,7 +95,7 @@ const googleDriveAPI: GoogleDriveAPI = {
     }
   },
 
-  async copyReportTemplate(parentFolderId?: string): Promise<DriveFile> {
+  async copyReportTemplate(parentFolderId: string, fileName: string): Promise<DriveFile> {
     try {
       const accessToken = await googleDriveAPI.getAccessToken();
 
@@ -104,6 +104,10 @@ const googleDriveAPI: GoogleDriveAPI = {
       console.log('current User ==> ', currentUser?.email)
       // TODO use `emailVerified` 
 
+      if (!fileName) {
+        throw new Error('Missing file name')
+      }
+
       const response = await fetch('/api/files/copy', {
         method: 'POST',
         headers: {
@@ -111,13 +115,14 @@ const googleDriveAPI: GoogleDriveAPI = {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          fileName: 'My Report TEST',
+          fileName,
           email: currentUser?.email,
           parentFolderId
         })
       });
 
       if (!response.ok) {
+        console.log(response)
         throw new Error(`Failed to copy file: ${response.status}`);
       }
 

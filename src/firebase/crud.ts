@@ -1,7 +1,7 @@
 import googleDriveAPI from '../lib/googleDriveClient';
 import type { FirestoreAccount } from '../types/accountTypes';
 import type { Folder } from '../types/folderTypes';
-import type { FirestoreLedger } from '../types/ledgerTypes';
+import type { Ledger } from '../types/ledgerTypes';
 import type { FirestoreTransaction } from '../types/transactionTypes';
 import { db } from './firebase'; // Assuming your firebase initialization is in firebase.ts
 import { collection, query, where, getDocs, updateDoc, deleteDoc, doc, setDoc } from 'firebase/firestore';
@@ -143,11 +143,11 @@ export async function updateFolder(folder: Folder) {
 }
 
 // Ledgers
-export async function createLedger(ledger: FirestoreLedger) {
+export async function createLedger(ledger: Ledger) {
   await setDoc(doc(db, 'ledgers', ledger.id), ledger);
 };
 
-export const loadLedgers = async (userId: string): Promise<FirestoreLedger[]> => {
+export const loadLedgers = async (userId: string): Promise<Ledger[]> => {
   const q = query(collection(db, 'ledgers'), where('userId', '==', userId));
   const snapshot = await getDocs(q);
 
@@ -157,6 +157,6 @@ export const loadLedgers = async (userId: string): Promise<FirestoreLedger[]> =>
       ...data,
       id: doc.id,
       dateCreated: data.dateCreated?.toDate?.() ?? new Date(),
-    } as FirestoreLedger;
+    } as Ledger;
   });
 };

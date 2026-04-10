@@ -8,8 +8,9 @@ import type { FirestoreAccount, FormAccountData } from './types/accountTypes';
 import type { FirestoreTransaction } from './types/transactionTypes';
 import { findAccountById, generateFirestoreId } from './lib/firestore';
 import ReportTrigger from './components/ReportTrigger';
-import type { FirestoreLedger } from './types/ledgerTypes';
+import type { LedgerInput } from './types/ledgerTypes';
 import { useNavigate } from 'react-router-dom';
+import { calculateTotals } from './helpers/ledger';
 
 const Transactions: React.FC = () => {
   const [subType, setSubType] = useState<'non-deductible' | 'non-income' | null>(null);
@@ -123,13 +124,14 @@ const Transactions: React.FC = () => {
       return
     }
 
-    const ledgerData: FirestoreLedger = {
+    const ledgerData: LedgerInput = {
       id: generateFirestoreId('ledgers'),
       userId: user?.uid || 'unknown',
       name: newLedger.name.trim(),
       description: newLedger.description.trim(),
       dateCreated: new Date(),
       parentFolderId: currentFiscalYear.id,
+      runningTotals: null,
     };
 
     try {
@@ -139,7 +141,6 @@ const Transactions: React.FC = () => {
         description: '',
         dateCreated: new Date(),
       });
-      setCurrentLedger(ledgerData);
       setShowLedgerForm(false);
     } catch (error) {
       console.error('Error creating ledger:', error);
@@ -222,37 +223,19 @@ const Transactions: React.FC = () => {
     );
   }
 
-  const totalDeposits = transactions
-    .filter(t => t.type === 'deposit')
-    .reduce((sum, t) => sum + t.value, 0);
-
-  const totalNonIncomeDeposits = transactions
-    .filter(t => t.type === 'deposit' && t.subType === 'non-income')
-    .reduce((sum, t) => sum + t.value, 0);
-
-  const totalIncome = totalDeposits - totalNonIncomeDeposits;
-
-  const totalDeductibleExpenses = transactions
-    .filter(t => t.type === 'expense' && (!t.subType || t.subType !== 'non-deductible'))
-    .reduce((sum, t) => sum + t.value, 0);
-
-  const totalNonDeductibleExpenses = transactions
-    .filter(t => t.type === 'expense' && t.subType === 'non-deductible')
-    .reduce((sum, t) => sum + t.value, 0);
-
-  const totalExpenses = transactions
-    .filter(t => t.type === 'expense')
-    .reduce((sum, t) => sum + t.value, 0);
-
-  const totalBalance = totalDeposits - totalExpenses;
-  const totalBalanceExcludingNonIncomeAndNonDeductible =
-    (totalDeposits - totalNonIncomeDeposits) - (totalExpenses - totalNonDeductibleExpenses);
-
+  const {
+    totalDeposits,
+    totalNonIncomeDeposits,
+    totalIncome,
+    totalDeductibleExpenses,
+    totalNonDeductibleExpenses,
+    totalExpenses,
+    totalBalance,
+    totalBalanceExcludingNonIncomeAndNonDeductible
+  } = calculateTotals(transactions)
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
-      {console.log('current book ', currentBook)}
-      {console.log('current year ', currentFiscalYear)}
 
       <main className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
@@ -320,14 +303,14 @@ const Transactions: React.FC = () => {
                   <div className="flex gap-2">
                     <button
                       type="submit"
-                      className="bg-primary hover:bg-secondary px-4 py-2 rounded-lg"
+                      className="btn-primary"
                     >
                       Save Ledger
                     </button>
                     <button
                       type="button"
                       onClick={() => setShowLedgerForm(false)}
-                      className="border border-gray-300 px-4 py-2 rounded-lg"
+                      className="btn-secondary"
                     >
                       Cancel
                     </button>

@@ -15,7 +15,7 @@ import { AccountActions, type FirestoreAccount } from '../types/accountTypes';
 import googleDriveAPI from '../lib/googleDriveClient';
 import { FolderActions, type Folder } from '../types/folderTypes';
 import folderReducer from '../reducer/folderReducer';
-import { LedgerActions, type FirestoreLedger } from '../types/ledgerTypes';
+import { LedgerActions, type LedgerInput, type Ledger } from '../types/ledgerTypes';
 import ledgerReducer from '../reducer/ledgerReducer';
 
 interface User {
@@ -43,12 +43,12 @@ interface AuthContextType {
   addAccount: (acount: FirestoreAccount) => void;
   updateAccount: (updatedAccount: FirestoreAccount) => void;
   deleteAccount: (accountId: string) => void;
-  ledgers: FirestoreLedger[];
+  ledgers: Ledger[];
   ledgersLoading: boolean;
-  addLedger: (ledger: FirestoreLedger) => Promise<void>;
-  setCurrentLedger: (ledger: FirestoreLedger) => void;
-  currentLedger: FirestoreLedger | null;
-  currentLedgers: FirestoreLedger[] | [];
+  addLedger: (ledger: LedgerInput) => Promise<void>;
+  setCurrentLedger: (ledger: Ledger) => void;
+  currentLedger: Ledger | null;
+  currentLedgers: Ledger[] | [];
   folders: Folder[];
   currentBook: Folder | null;
   currentFiscalYear: Folder | null;
@@ -230,13 +230,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     dispatchFolder({ type: FolderActions.SET_FOLDERS, payload: newFolders })
   }
 
-  const addLedger = async (ledger: FirestoreLedger) => {
+  const addLedger = async (ledger: LedgerInput) => {
     setLedgersLoading(true);
-    await createLedger(ledger);
+    // Copy google spreadsheet from template
+    const copiedFile = await googleDriveAPI.copyReportTemplate(ledger.parentFolderId, ledger.name)
+
+    console.log('copy file success!!!!!!! ==> ', copiedFile)
+
+    const fileId = copiedFile.fileId
+
+    // create Firestore entry
+    await createLedger({ ...ledger, fileId });
+
     dispatchLedger({ type: LedgerActions.ADD_LEDGER, payload: ledger });
+    dispatchLedger({ type: LedgerActions.SET_CURRENT_LEDGER, payload: ledger })
     setLedgersLoading(false);
   };
-  const setCurrentLedger = (ledger: FirestoreLedger) => {
+
+  const setCurrentLedger = (ledger: Ledger) => {
     console.log('set current ledger triggered==> ', ledger)
     dispatchLedger({ type: LedgerActions.SET_CURRENT_LEDGER, payload: ledger });
   };

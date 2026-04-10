@@ -28,3 +28,6 @@ dist-ssr
 
 # server 
 *-key.json
+
+# notes
+notes.txt
