@@ -5,6 +5,9 @@ export interface FirestoreLedger {
     description: string;
     dateCreated: Date;
     parentFolderId: string;
+    runningTotals: {
+        [accountId: string]: number;
+    };
 }
 
 export interface FormLedgerData {
