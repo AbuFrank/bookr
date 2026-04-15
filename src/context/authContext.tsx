@@ -233,18 +233,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const addLedger = async (ledger: LedgerInput) => {
     setLedgersLoading(true);
     // Copy google spreadsheet from template
-    const copiedFile = await googleDriveAPI.copyReportTemplate(ledger.parentFolderId, ledger.name)
+    try {
+      const copiedFile = await googleDriveAPI.copyReportTemplate(ledger.parentFolderId, ledger.name)
 
-    console.log('copy file success!!!!!!! ==> ', copiedFile)
+      console.log('copy file success!!!!!!! ==> ', copiedFile)
 
-    const fileId = copiedFile.fileId
+      const fileId = copiedFile.fileId
 
-    // create Firestore entry
-    await createLedger({ ...ledger, fileId });
+      // create Firestore entry
+      await createLedger({ ...ledger, fileId });
 
-    dispatchLedger({ type: LedgerActions.ADD_LEDGER, payload: ledger });
-    dispatchLedger({ type: LedgerActions.SET_CURRENT_LEDGER, payload: ledger })
-    setLedgersLoading(false);
+      dispatchLedger({ type: LedgerActions.ADD_LEDGER, payload: ledger });
+      dispatchLedger({ type: LedgerActions.SET_CURRENT_LEDGER, payload: ledger })
+      setLedgersLoading(false);
+    } catch (err) {
+      console.log('auth context ledger error caught....', err)
+      setLedgersLoading(false);
+      throw new Error(err.message)
+    }
   };
 
   const setCurrentLedger = (ledger: Ledger) => {

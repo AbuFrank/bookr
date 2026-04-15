@@ -11,6 +11,8 @@ import ReportTrigger from './components/ReportTrigger';
 import type { LedgerInput } from './types/ledgerTypes';
 import { useNavigate } from 'react-router-dom';
 import { calculateTotals } from './helpers/ledger';
+import LoadingSpinner from './components/LoadingSpinner';
+import { reauthenticate } from './firebase/authService';
 
 const Transactions: React.FC = () => {
   const [subType, setSubType] = useState<'non-deductible' | 'non-income' | null>(null);
@@ -52,6 +54,7 @@ const Transactions: React.FC = () => {
     currentFiscalYear,
     currentBook,
     ledgers,
+    ledgersLoading,
     addLedger,
     currentLedger,
     setCurrentLedger,
@@ -135,7 +138,10 @@ const Transactions: React.FC = () => {
     };
 
     try {
-      await addLedger(ledgerData);
+      const result = await addLedger(ledgerData);
+      if (result?.error) {
+        return
+      }
       setNewLedger({
         name: '',
         description: '',
@@ -144,6 +150,25 @@ const Transactions: React.FC = () => {
       setShowLedgerForm(false);
     } catch (error) {
       console.error('Error creating ledger:', error);
+      if (error?.message?.includes('Token expired')) {
+        console.log('Access token invalid');
+
+        // Show a button to re-authenticate instead of auto-reauth
+        const userAction = window.confirm('Your session has expired. Please re-authenticate to continue.');
+
+        if (userAction) {
+          console.log('WE HAVE USER ACTION!!!')
+          try {
+            await reauthenticate()
+          } catch (reauthError) {
+            console.error('Re-authentication failed:', reauthError);
+            alert('Could not re-authenticate. Please refresh the page.');
+          }
+        }
+      } else {
+        console.error('Folder creation failed:', error);
+        alert('Failed to create folder. Please contact support.');
+      }
     }
   };
 
@@ -302,10 +327,11 @@ const Transactions: React.FC = () => {
 
                   <div className="flex gap-2">
                     <button
+                      disabled={ledgersLoading}
                       type="submit"
                       className="btn-primary"
                     >
-                      Save Ledger
+                      {ledgersLoading ? <LoadingSpinner /> : "Save Ledger"}
                     </button>
                     <button
                       type="button"

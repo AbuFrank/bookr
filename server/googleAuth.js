@@ -6,7 +6,7 @@ import dotenv from 'dotenv';
 let serviceAccountClient = null;
 
 // Get absolute path to service account key
-const keyPath = path.join(process.cwd(), 'server/service-account-key.json');
+const keyPath = path.join(process.cwd(), 'server/cfcc-service-account-key.json');
 
 // Service account that has access to the template file
 export const getServiceAccountDrive = () => {
@@ -58,16 +58,73 @@ export const getGoogleDriveClient = async (req, res, next) => {
   }
 };
 
-export const copyTemplateFile = async (templateId, fileName, userEmail, parentFolderId = null) => {
+export const createFolder = async (name, userEmail, sharedFolderId, parentId) => {
+  try {
+    console.log('createFolder fired... ', { name, userEmail, sharedFolderId, parentId })
+    const { drive } = getServiceAccountDrive();
+
+    // Check for existence
+    // Verify the shared folder exists first
+    try {
+      const response = await drive.files.get({
+        fileId: sharedFolderId,
+        supportsAllDrives: true
+      });
+
+      console.log('Shared folder exists and is accessible');
+      console.log(response.data)
+    } catch (error) {
+      console.error('Shared folder not accessible:', error.message);
+      throw new Error(`Shared folder not accessible: ${sharedFolderId}`);
+    }
+
+    const response = await drive.files.create({
+      requestBody: {
+        name,
+        mimeType: 'application/vnd.google-apps.folder',
+        parents: parentId ? [parentId] : [sharedFolderId]
+      },
+      fields: 'id, name, webViewLink',
+      supportsAllDrives: true
+    });
+
+    console.log('attempting folder permissions for bookr manager...', response.data.id)
+    const newFolderId = response.data.id
+
+    console.log('email address ==> ', userEmail)
+
+    // Only give read access if not top-level folder
+    if (parentId) {
+      await drive.permissions.create({
+        fileId: newFolderId,
+        requestBody: {
+          role: 'reader',
+          type: 'user',
+          emailAddress: userEmail
+        },
+        supportsAllDrives: true
+      });
+    }
+    return response.data
+  } catch (error) {
+    console.error('Error in createFolder:', error);
+    throw error;
+  }
+}
+
+export const copyTemplateFile = async (templateId, fileName, userEmail, sharedFolderId, parentFolderId = null) => {
   try {
     const { drive } = getServiceAccountDrive();
     console.log('copyTemplateFile...')
+
+    console.log('parent folder id', parentFolderId)
 
     // Copy the file directly using Google Drive API
     const copyResponse = await drive.files.copy({
       fileId: templateId,
       requestBody: {
         name: fileName || 'Copied Report',
+        parents: [parentFolderId]
       },
       supportsAllDrives: true,
       fields: 'id, webViewLink'
@@ -75,20 +132,53 @@ export const copyTemplateFile = async (templateId, fileName, userEmail, parentFo
 
 
     const newFileId = copyResponse.data.id;
+    // const newFileId = "12h8KZdEp0L26ByrbOZKfr5Y05JDIBixj_y8Mht-Gp78"
+    // const tempFolderId = "1XQcAW_EA32YWuCvGOs78QrSbFG2lz6RX"
 
     console.log('newFileId ==> ', newFileId)
 
-    // Set user permissions
     console.log('attempting file permissions for user ==> ', userEmail)
     await drive.permissions.create({
       fileId: newFileId,
       requestBody: {
-        role: 'owner',
+        role: 'reader',
         type: 'user',
         emailAddress: userEmail
       },
-      supportsAllDrives: true
+      supportsAllDrives: true,
     });
+
+    console.log('Attempting file transfer of new file with ID: ', newFileId)
+
+    // await drive.files.update({
+    //   fileId: newFileId,
+    //   addParents: parentFolderId,
+    //   removeParents: sharedFolderId,
+    //   supportsAllDrives: true,
+    //   fields: 'id, parents'
+    // });
+    // console.log('File moved to parent folder:', parentFolderId);
+    // Set user permissions
+
+    // Set user permissions
+    // console.log('attempting file permissions for user ==> ', userEmail)
+    // await drive.permissions.create({
+    //   fileId: newFileId,
+    //   requestBody: {
+    //     role: 'writer',
+    //     type: 'user',
+    //     emailAddress: userEmail,
+    //   },
+    //   supportsAllDrives: true,
+    // });
+
+    // await drive.files.update({
+    //   fileId: newFileId,
+    //   addParents: parentFolderId,
+    //   supportsAllDrives: true,
+    //   fields: 'id, parents'
+    // });
+    // console.log('File moved to parent folder:', parentFolderId);
 
     return {
       fileId: newFileId,

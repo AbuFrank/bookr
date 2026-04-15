@@ -121,7 +121,8 @@ export async function loadUserFolders(userId: string) {
       loadedFolders.push({ ...doc.data() } as Folder);
     });
     if (loadedFolders.length === 0) {
-      const newFolder = await googleDriveAPI.createFolder("Bookr App", '')
+      const parentFolder = await googleDriveAPI.createFolder(userId, '')
+      const newFolder = await googleDriveAPI.createFolder("Bookr App", parentFolder.id)
       loadedFolders.push(newFolder)
     }
     return loadedFolders;

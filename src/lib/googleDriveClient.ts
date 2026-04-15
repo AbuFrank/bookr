@@ -49,10 +49,19 @@ const googleDriveAPI: GoogleDriveAPI = {
       throw new Error('No authenticated user found');
     }
 
-    console.log('creating folder ==> ', `name: ${name}`, `parentId: ${parentId}`)
+    // create top-level folder if no parentId
+    const modifiedName = parentId ? name : `${currentUser.email?.split("@")[0]}-${currentUser.uid}`
+
+
+    console.log('creating folder ==> ', `name: ${modifiedName}`, `parentId: ${parentId}`)
     try {
       // No folder ID exists, need to create it
       const accessToken = await googleDriveAPI.getAccessToken();
+
+
+      if (!currentUser?.email) {
+        throw new Error('Missing user email')
+      }
 
       const response = await fetch('/api/folder', {
         method: 'POST',
@@ -61,8 +70,9 @@ const googleDriveAPI: GoogleDriveAPI = {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          name,
-          parentId
+          name: modifiedName,
+          parentId,
+          userEmail: currentUser?.email,
         })
       });
 
@@ -85,9 +95,9 @@ const googleDriveAPI: GoogleDriveAPI = {
         userId: currentUser.uid,
         parentId,
       }
-      // Store the folder ID in Firestore
-      const folderId = createFirestoreFolder(folder)
-      console.log('Created and stored folder:', folderId);
+      // Store the folder in Firestore
+      createFirestoreFolder(folder)
+      console.log('Created and stored folder:', folder);
       return folder
     } catch (error) {
       console.error('Error creating Bookr folder:', error);
@@ -98,6 +108,7 @@ const googleDriveAPI: GoogleDriveAPI = {
   async copyReportTemplate(parentFolderId: string, fileName: string): Promise<DriveFile> {
     try {
       const accessToken = await googleDriveAPI.getAccessToken();
+      // const accessToken = await getAccessTokenWithRefresh()
 
       console.log('///////////////////')
       console.log('accessToken ==> ', accessToken)
@@ -106,6 +117,10 @@ const googleDriveAPI: GoogleDriveAPI = {
 
       if (!fileName) {
         throw new Error('Missing file name')
+      }
+
+      if (!currentUser?.email) {
+        throw new Error('Missing user email')
       }
 
       const response = await fetch('/api/files/copy', {
@@ -120,6 +135,11 @@ const googleDriveAPI: GoogleDriveAPI = {
           parentFolderId
         })
       });
+
+      if (response.status === 401) {
+        console.log('401 error caught...')
+        throw new Error('Token expired')
+      }
 
       if (!response.ok) {
         console.log(response)
@@ -167,7 +187,7 @@ const googleDriveAPI: GoogleDriveAPI = {
   },
 
   async getAccessToken(): Promise<string> {
-
+    // TODO remove access token storage/retrieval in lieu of revalidate()
     // First try to use cached token
     if (currentUserToken && currentUser) {
       return currentUserToken;

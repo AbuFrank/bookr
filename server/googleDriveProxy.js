@@ -1,5 +1,5 @@
 import express from 'express';
-import { copyTemplateFile, getGoogleDriveClient, updateBatchCells } from './googleAuth.js';
+import { copyTemplateFile, createFolder, getGoogleDriveClient, getServiceAccountDrive, updateBatchCells } from './googleAuth.js';
 import path from 'path';
 
 const router = express.Router();
@@ -9,7 +9,8 @@ import dotenv from 'dotenv';
 dotenv.config({ path: path.join(process.cwd(), 'server/.env.local') });
 
 const templateId = process.env.GOOGLE_TEMPLATE_ID
-const parentFolderId = process.env.GOOGLE_PARENT_FOLDER_ID
+const serviceEmail = process.env.GOOGLE_SERVICE_EMAIL
+const sharedFolderId = process.env.GOOGLE_PARENT_FOLDER_ID
 
 // Route to initiate Google OAuth2 flow
 router.get('/auth/google', (req, res) => {
@@ -39,27 +40,27 @@ router.get('/auth/google', (req, res) => {
 // Create folder for the user
 router.post('/folder', getGoogleDriveClient, async (req, res) => {
   try {
-    const { name, parentId } = req.body;
+    const { name, parentId, userEmail } = req.body;
+
+    console.log('creating folder ...', { name, parentId, userEmail, sharedFolderId })
 
     if (!name) {
       return res.status(400).json({ error: 'Must provide a name' });
     }
 
-    const response = await req.drive.files.create({
-      requestBody: {
-        name: name,
-        mimeType: 'application/vnd.google-apps.folder',
-        parents: parentId ? [parentId] : []
-      },
-      fields: 'id, name, webViewLink',
-    });
 
-    res.json(response.data);
+    if (!userEmail) {
+      return res.status(400).json({ error: 'Must provide user email' });
+    }
+
+    const folderData = await createFolder(name, userEmail, sharedFolderId, parentId)
+    console.log('successful folder data ==> ', folderData)
+    res.json(folderData);
   } catch (error) {
     if (error?.message?.includes("Request had invalid authentication credentials.")) {
       res.status(401).json({ error: 'Invalid Token' })
     }
-    console.error('Error creating folder:', error);
+    console.error('Error creating folder:', error?.response || error);
     res.status(500).json({ error: 'Failed to create folder' });
   }
 });
@@ -93,12 +94,14 @@ router.post('/files/copy', getGoogleDriveClient, async (req, res) => {
       templateId,
       fileName,
       email,
+      sharedFolderId,
       parentFolderId
     );
 
     console.log('copy template result ==> ', result)
-
-    console.log('Attempting file transfer...')
+    // const newFileId = result.fileId
+    const newFileId = "12h8KZdEp0L26ByrbOZKfr5Y05JDIBixj_y8Mht-Gp78"
+    console.log('Attempting file transfer of new file with ID: ', newFileId)
 
     await drive.files.update({
       fileId: newFileId,
@@ -107,6 +110,13 @@ router.post('/files/copy', getGoogleDriveClient, async (req, res) => {
       fields: 'id, parents'
     });
     console.log('File moved to parent folder:', parentFolderId);
+    // await drive.files.update({
+    //   fileId: newFileId,
+    //   addParents: parentFolderId,
+    //   supportsAllDrives: true,
+    //   fields: 'id, parents'
+    // });
+    // console.log('File moved to parent folder:', parentFolderId);
 
 
     res.json(result)
@@ -114,6 +124,9 @@ router.post('/files/copy', getGoogleDriveClient, async (req, res) => {
     console.error('Error copying file:', error);
     if (error.code === 400) {
       return res.status(400).json({ error: 'Invalid request parameters' });
+    }
+    if (error?.message?.includes("Request had invalid authentication credentials.")) {
+      res.status(401).json({ error: 'Invalid Token' })
     }
     if (error.code === 403) {
       return res.status(403).json({ error: 'Access denied' });
@@ -311,3 +324,48 @@ router.get('/sheets/:fileId', getGoogleDriveClient, async (req, res) => {
 });
 
 export default router;
+
+
+// Backup
+// Create folder for the user
+// router.post('/folder', getGoogleDriveClient, async (req, res) => {
+//   try {
+//     const { name, parentId } = req.body;
+
+//     if (!name) {
+//       return res.status(400).json({ error: 'Must provide a name' });
+//     }
+
+//     const response = await req.drive.files.create({
+//       requestBody: {
+//         name: name,
+//         mimeType: 'application/vnd.google-apps.folder',
+//         parents: parentId ? [parentId] : []
+//       },
+//       fields: 'id, name, webViewLink',
+//     });
+
+//     console.log('attempting folder permissions for bookr manager...', response.data.id)
+//     const newFolderId = response.data.id
+
+//     console.log('email address ==> ', serviceEmail)
+
+//     await req.drive.permissions.create({
+//       fileId: newFolderId,
+//       requestBody: {
+//         role: 'writer',
+//         type: 'user',
+//         emailAddress: serviceEmail
+//       },
+//       supportsAllDrives: true
+//     });
+
+//     res.json(response.data);
+//   } catch (error) {
+//     if (error?.message?.includes("Request had invalid authentication credentials.")) {
+//       res.status(401).json({ error: 'Invalid Token' })
+//     }
+//     console.error('Error creating folder:', error);
+//     res.status(500).json({ error: 'Failed to create folder' });
+//   }
+// });
