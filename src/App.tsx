@@ -2,7 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider } from './context/authContext';
 import Login from './Login';
 import ProtectedRoute from './components/ProtectedRoute';
-import Transactions from './PageTransactions';
+import PageTransactions from './PageTransactions';
 import Unauthorized from './Unauthorized';
 import PageBooks from './PageBooks';
 
@@ -20,7 +20,7 @@ function App() {
               path="/transactions"
               element={
                 <ProtectedRoute>
-                  <Transactions />
+                  <PageTransactions />
                 </ProtectedRoute>
               }
             />

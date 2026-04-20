@@ -14,7 +14,8 @@ import { calculateTotals } from './helpers/ledger';
 import LoadingSpinner from './components/LoadingSpinner';
 import { reauthenticate } from './firebase/authService';
 
-const Transactions: React.FC = () => {
+const PageTransactions: React.FC = () => {
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [subType, setSubType] = useState<'non-deductible' | 'non-income' | null>(null);
   const [formData, setFormData] = useState({
     checkNumber: '',
@@ -44,7 +45,7 @@ const Transactions: React.FC = () => {
   const {
     user,
     accounts,
-    transactions,
+    currentTransactions,
     addTransaction,
     deleteTransaction,
     addAccount,
@@ -69,10 +70,6 @@ const Transactions: React.FC = () => {
     }
   }, [loading, currentFiscalYear, currentBook])
 
-  const currentLedgerTransactions = useMemo(
-    () => transactions.filter((transaction) => transaction.ledgerId === currentLedger?.id) ?? null,
-    [currentLedger, transactions]
-  );
 
   const sortedLedgers = useMemo(() => {
     return [...ledgers].sort(
@@ -103,6 +100,7 @@ const Transactions: React.FC = () => {
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
+    setErrors({ ...errors, accountErrors: '' })
     setNewAccount(prev => ({ ...prev, [name]: value }));
   };
 
@@ -212,7 +210,6 @@ const Transactions: React.FC = () => {
         });
         setSubType(null);
         setCurrentAccount(null);
-        setShowTransactionForm(false);
       } catch (error) {
         console.error('Error submitting transaction:', error);
       }
@@ -221,6 +218,10 @@ const Transactions: React.FC = () => {
 
   const handleAccountSubmit = async () => {
     if (newAccount.accountName && currentBook?.id) {
+      if (accounts.some((account: FirestoreAccount) => account.accountName.trim().toLocaleLowerCase() === newAccount.accountName.trim().toLowerCase())) {
+        setErrors({ ...errors, accountErrors: "Account already exists" })
+        return
+      }
       const accountData: FirestoreAccount = {
         id: generateFirestoreId('accounts'),
         bookId: currentBook?.id,
@@ -257,7 +258,7 @@ const Transactions: React.FC = () => {
     totalExpenses,
     totalBalance,
     totalBalanceExcludingNonIncomeAndNonDeductible
-  } = calculateTotals(transactions)
+  } = calculateTotals(currentTransactions)
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
@@ -430,55 +431,31 @@ const Transactions: React.FC = () => {
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                <div className="rounded-lg border border-gray-200 p-4">
-                  <div className="text-gray-500 mb-1">Ledger Name</div>
-                  <div className="font-medium text-gray-900">
-                    {currentLedger?.name || '—'}
-                  </div>
+              {showTransactionForm && (
+                <div className="bg-white rounded-xl shadow-md p-6">
+                  <FormTransaction
+                    errors={errors}
+                    formData={formData}
+                    onTransactionSubmit={handleTransactionSubmit}
+                    onTransactionFormChange={handleTransactionFormChange}
+                    onTransactionCancel={() => setShowTransactionForm(false)}
+                    onDateChange={handleDateChange}
+                    handleAccountSelect={handleAccountSelect}
+                    setIsAccountFormToggled={setIsAccountFormToggled}
+                    accountsLoading={accountsLoading}
+                    handleAccountSubmit={handleAccountSubmit}
+                    handleAccountFormChange={handleAccountFormChange}
+                    accounts={accounts}
+                    currentAccount={currentAccount}
+                    isAccountFormToggled={isAccountFormToggled}
+                    newAccount={newAccount}
+                    setNewAccount={setNewAccount}
+                    subType={subType}
+                    setSubType={setSubType}
+                  />
                 </div>
-
-                <div className="rounded-lg border border-gray-200 p-4">
-                  <div className="text-gray-500 mb-1">Created</div>
-                  <div className="font-medium text-gray-900">
-                    {currentLedger
-                      ? new Date(currentLedger.dateCreated).toLocaleDateString()
-                      : '—'}
-                  </div>
-                </div>
-
-                <div className="rounded-lg border border-gray-200 p-4 md:col-span-2">
-                  <div className="text-gray-500 mb-1">Description</div>
-                  <div className="font-medium text-gray-900">
-                    {currentLedger?.description || 'No description yet'}
-                  </div>
-                </div>
-              </div>
+              )}
             </div>
-
-            {showTransactionForm && (
-              <div className="bg-white rounded-xl shadow-md p-6">
-                <FormTransaction
-                  formData={formData}
-                  onTransactionSubmit={handleTransactionSubmit}
-                  onTransactionFormChange={handleTransactionFormChange}
-                  onTransactionCancel={() => setShowTransactionForm(false)}
-                  onDateChange={handleDateChange}
-                  handleAccountSelect={handleAccountSelect}
-                  setIsAccountFormToggled={setIsAccountFormToggled}
-                  accountsLoading={accountsLoading}
-                  handleAccountSubmit={handleAccountSubmit}
-                  handleAccountFormChange={handleAccountFormChange}
-                  accounts={accounts}
-                  currentAccount={currentAccount}
-                  isAccountFormToggled={isAccountFormToggled}
-                  newAccount={newAccount}
-                  setNewAccount={setNewAccount}
-                  subType={subType}
-                  setSubType={setSubType}
-                />
-              </div>
-            )}
 
             <div className="bg-white rounded-xl shadow-md p-6">
               <div className="mb-4">
@@ -487,7 +464,7 @@ const Transactions: React.FC = () => {
 
               <TransactionList
                 accounts={accounts}
-                transactions={currentLedgerTransactions}
+                transactions={currentTransactions}
                 deleteTransaction={deleteTransaction}
                 transactionsLoading={transactionsLoading}
               />
@@ -505,4 +482,4 @@ const Transactions: React.FC = () => {
   );
 };
 
-export default Transactions;
+export default PageTransactions;

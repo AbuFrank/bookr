@@ -33,13 +33,14 @@ interface AuthContextType {
   loading: boolean;
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
+  transactionsLoading: boolean;
   transactions: FirestoreTransaction[];
+  currentTransactions: FirestoreTransaction[];
   addTransaction: (transaction: FirestoreTransaction) => void;
   updateTransaction: (updatedTransaction: FirestoreTransaction) => void;
   deleteTransaction: (transactionId: string) => void;
   accounts: FirestoreAccount[];
   accountsLoading: boolean;
-  transactionsLoading: boolean;
   addAccount: (acount: FirestoreAccount) => void;
   updateAccount: (updatedAccount: FirestoreAccount) => void;
   deleteAccount: (accountId: string) => void;
@@ -72,7 +73,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [transactionsLoading, setTransactionsLoading] = useState<boolean>(false);
-  const [transactionState, dispatchTransaction] = useReducer(transactionReducer, { transactions: [] });
+  const [transactionState, dispatchTransaction] = useReducer(transactionReducer, { transactions: [], currentTransactions: [] });
   const [accountsLoading, setAccountsLoading] = useState<boolean>(false);
   const [accountState, dispatchAccount] = useReducer(accountReducer, { accounts: [], currentAccounts: [] })
   const [ledgersLoading, setLedgersLoading] = useState<boolean>(false);
@@ -147,11 +148,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Set current ledgers based on current folder parent
     // Set current ledger to most recent by default
     const fiscalYearLedgers = ledgerState.ledgers.filter(ledger => ledger.parentFolderId === folderState?.currentYear?.id)
-    const dateSortedLedgers = fiscalYearLedgers.sort(
+    const dateDescendingLedgers = fiscalYearLedgers.sort(
       (a, b) => new Date(b.dateCreated).getTime() - new Date(a.dateCreated).getTime()
     )
-    dispatchLedger({ type: LedgerActions.SET_CURRENT_LEDGERS, payload: dateSortedLedgers })
-    dispatchLedger({ type: LedgerActions.SET_CURRENT_LEDGER, payload: dateSortedLedgers[0] })
+    console.log("current ledgers ==> ", dateDescendingLedgers)
+    dispatchLedger({ type: LedgerActions.SET_CURRENT_LEDGERS, payload: dateDescendingLedgers })
+    dispatchLedger({ type: LedgerActions.SET_CURRENT_LEDGER, payload: dateDescendingLedgers[0] })
 
   }, [folderState.currentYear, ledgerState.ledgers])
 
@@ -167,6 +169,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     dispatchAccount({ type: AccountActions.SET_CURRENT_ACCOUNTS, payload: bookAccounts })
 
   }, [folderState.currentBook, accountState.accounts])
+
+  useEffect(() => {
+    if (ledgerState.currentLedger) {
+
+      const currentLedgerTransactions = transactionState.transactions.filter(t => t.ledgerId === ledgerState.currentLedger.id)
+      dispatchTransaction({ type: TransactionActions.SET_CURRENT_TRANSACTIONS, payload: currentLedgerTransactions })
+    }
+  }, [transactionState.transactions, ledgerState.currentLedger])
 
   const addTransaction = async (transaction: FirestoreTransaction) => {
     setTransactionsLoading(true)
@@ -284,6 +294,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     loginWithGoogle,
     logout,
     transactions: transactionState.transactions,
+    currentTransactions: transactionState.currentTransactions,
     addTransaction,
     updateTransaction,
     deleteTransaction,

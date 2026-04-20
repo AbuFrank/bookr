@@ -8,6 +8,7 @@ const inputClass = "w-full px-3 py-2 border border-gray-300 rounded-lg focus:out
 
 
 export interface FormTransactionProps {
+  errors: { [key: string]: string }
   formData: FormData,
   onTransactionSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onTransactionFormChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
@@ -28,6 +29,7 @@ export interface FormTransactionProps {
 }
 
 const FormTransaction: React.FC<FormTransactionProps> = ({
+  errors,
   formData,
   accounts,
   onTransactionSubmit,
@@ -68,7 +70,7 @@ const FormTransaction: React.FC<FormTransactionProps> = ({
         </div>
 
         <div>
-          <label className={labelClass}>To Whom Paid</label>
+          <label className={labelClass}>To Whom Paid / Memo</label>
           <input
             type="text"
             name="paidTo"
@@ -100,6 +102,7 @@ const FormTransaction: React.FC<FormTransactionProps> = ({
             <div className="mt-3 p-4 bg-gray-100">
 
               <label className="block text-sm font-medium text-gray-700 mb-1">Account Name</label>
+              {/* Error message here */}
               <input
                 type="text"
                 name="accountName"
@@ -108,7 +111,11 @@ const FormTransaction: React.FC<FormTransactionProps> = ({
                 className={inputClass}
                 placeholder="Enter Name"
               />
-
+              {errors.accountName && (
+                <div className="mt-2 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md">
+                  {errors.accountName}
+                </div>
+              )}
               <div className="mb-1">
                 <button
                   type="button"

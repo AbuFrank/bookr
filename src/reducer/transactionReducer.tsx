@@ -2,6 +2,7 @@ import { TransactionActions, type FirestoreTransaction } from "../types/transact
 
 interface TransactionState {
   transactions: FirestoreTransaction[];
+  currentTransactions: FirestoreTransaction[];
 }
 
 export const transactionReducer = (state: TransactionState, action: any): TransactionState => {
@@ -22,6 +23,8 @@ export const transactionReducer = (state: TransactionState, action: any): Transa
       };
     case TransactionActions.SET_TRANSACTIONS:
       return { ...state, transactions: action.payload };
+    case TransactionActions.SET_CURRENT_TRANSACTIONS:
+      return { ...state, currentTransactions: action.payload };
     default:
       return state;
   }

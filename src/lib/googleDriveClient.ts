@@ -91,7 +91,7 @@ const googleDriveAPI: GoogleDriveAPI = {
       const folder: Folder = {
         id: folderData.id,
         dateCreated: new Date(),
-        name,
+        name: modifiedName,
         userId: currentUser.uid,
         parentId,
       }
@@ -166,6 +166,8 @@ const googleDriveAPI: GoogleDriveAPI = {
       console.log('current User ==> ', currentUser?.email)
       console.log('spreadsheetId ==> ', spreadsheetId)
       console.log('Updates ==> ', updates)
+
+      console.log('update sheet cells server calling...')
 
       const response = await fetch(`/api/sheets/${spreadsheetId}/updates`, {
         method: 'PUT',

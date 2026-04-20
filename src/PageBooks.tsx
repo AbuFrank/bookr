@@ -103,7 +103,7 @@ const PageBooks = () => {
       }
       // Get the parent folder ID (should be the "bookr" folder)
       const parentFolder = groupValue === 'create-new'
-        ? folders.find(folder => !folder.parentId)
+        ? folders.find(folder => folder.name === "Bookr App")
         : folderTree.find(folder => folder.name === groupValue);
 
       console.log('parentFolder --> ', parentFolder)

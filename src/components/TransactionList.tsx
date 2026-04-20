@@ -40,7 +40,6 @@ const TransactionList: React.FC<TransactionListProps> = ({ accounts, transaction
             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Check No.</th>
             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">To Whom Paid</th>
             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Account</th>
-            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Number</th>
             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
             <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -48,7 +47,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ accounts, transaction
         </thead>
         <tbody className="bg-white divide-y divide-gray-200">
           {transactions.map((transaction) => (
-            <tr key={transaction.paidTo + transaction.value} className="hover:bg-gray-50">
+            <tr key={transaction.id} className="hover:bg-gray-50">
 
               <td className="px-6 py-4 whitespace-nowrap">
                 <div className="text-sm font-medium text-gray-900">{formatFirestoreDate(transaction.date)}</div>
@@ -57,7 +56,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ accounts, transaction
                 <div className="text-sm font-medium text-gray-900">{transaction.checkNumber}</div>
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
-                <div className="text-sm font-medium text-gray-900">{transaction.paidTo}:{transaction.id}</div>
+                <div className="text-sm font-medium text-gray-900">{transaction.paidTo}</div>
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
                 <div className="text-sm text-gray-500">{findAccountById(accounts, transaction?.accountId)?.accountName}</div>
