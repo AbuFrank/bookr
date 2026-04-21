@@ -136,6 +136,7 @@ const PageTransactions: React.FC = () => {
     };
 
     try {
+      // TODO create more robust error management and form requirements
       const result = await addLedger(ledgerData);
       if (result?.error) {
         return
@@ -173,6 +174,10 @@ const PageTransactions: React.FC = () => {
   const handleTransactionSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // TODO add a isSynced state to the ledger when state changes (transaction and ledger info) that is remove when the update ledger button is pressed.
+    // TODO also hide button when sync is true
+    // TODO move type to account instead?
+
     console.log('transaction submit data ==> ',
       currentLedger
     )
@@ -182,6 +187,7 @@ const PageTransactions: React.FC = () => {
       formData.value &&
       formData.date &&
       formData.type &&
+      currentAccount?.id &&
       currentLedger?.id
     ) {
       const transactionData: FirestoreTransaction = {
@@ -192,7 +198,7 @@ const PageTransactions: React.FC = () => {
         dateCreated: new Date(),
         ledgerId: currentLedger.id,
         paidTo: formData.paidTo,
-        accountId: currentAccount?.id || null,
+        accountId: currentAccount.id,
         value: parseFloat(formData.value),
         type: formData.type as 'expense' | 'deposit',
         subType: subType ? subType : null,
@@ -407,7 +413,7 @@ const PageTransactions: React.FC = () => {
                     {currentLedger ? currentLedger.name : 'Select a ledger'}
                   </h1>
                   <p className="text-gray-500 mt-1">
-                    {currentLedger?.description || 'Choose a ledger from the left to work inside it.'}
+                    {currentLedger?.description || 'Choose or create a ledger.'}
                   </p>
                 </div>
 
@@ -475,7 +481,7 @@ const PageTransactions: React.FC = () => {
         </div>
 
         <div className="mt-8">
-          <ReportTrigger />
+          {currentLedger && <ReportTrigger />}
         </div>
       </main>
     </div>

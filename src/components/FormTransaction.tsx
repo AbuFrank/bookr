@@ -86,11 +86,11 @@ const FormTransaction: React.FC<FormTransactionProps> = ({
           {accounts.length > 0 ? <><label className={labelClass}>Account</label>
             <select
               name="accountNumber"
-              value={currentAccount?.id}
+              value={currentAccount?.id || ''}
               onChange={handleAccountSelect}
               className={inputClass}
             >
-              <option value="">Select an Account</option>
+              <option value=''>Select an Account</option>
               {accounts.map((account: FirestoreAccount) => (
                 <option key={account.id} value={account.id}> {/* Use account.id as the value */}
                   {account.accountName}

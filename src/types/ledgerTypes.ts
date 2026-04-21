@@ -6,8 +6,9 @@ export interface LedgerInput {
     dateCreated: Date;
     parentFolderId: string;
     runningTotals: {
-        [accountId: string]: number;
+        [accountName: string]: { value: number, type: string };
     } | null;
+
 }
 
 export interface Ledger extends LedgerInput {

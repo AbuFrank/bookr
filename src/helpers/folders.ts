@@ -8,7 +8,7 @@ export const sortFoldersIntoTree = (folders: Folder[] | null): any[] => {
     return []
   }
 
-  const appFolder = folders.find(folder => !folder.parentId)
+  const appFolder = folders.find(folder => folder.name === "Bookr App")
 
   if (!appFolder?.id) {
     return []
@@ -29,7 +29,7 @@ export const sortFoldersIntoTree = (folders: Folder[] | null): any[] => {
   const childFolders = folders.filter(folder => folder.parentId && folder.parentId !== appFolder.id)
 
 
-  childFolders.sort((a, b) => sortFoldersByName(a.name, b.name)).forEach(folder => {
+  childFolders.sort((a, b) => sortAlphanumeric(a.name, b.name)).forEach(folder => {
     if (folder.parentId && folderMap.has(folder.parentId)) {
       // Add to parent's children array
       const parentNode = folderMap.get(folder.parentId);
@@ -46,14 +46,14 @@ export const sortFoldersIntoTree = (folders: Folder[] | null): any[] => {
 };
 
 // Function to sort folders by name
-const sortFoldersByName = (a: string, b: string) => {
+const sortAlphanumeric = (a: string, b: string) => {
   // Handle case where names might be numbers (as strings)
   const isNumA = /^\d+$/.test(a);
   const isNumB = /^\d+$/.test(b);
 
   // If both are numbers, sort numerically
   if (isNumA && isNumB) {
-    return parseInt(a, 10) - parseInt(b, 10);
+    return parseInt(b, 10) - parseInt(a, 10);
   }
 
   // If only A is a number, A comes first

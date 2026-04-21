@@ -250,11 +250,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       const fileId = copiedFile.fileId
 
+      const newLedger = { ...ledger, fileId }
       // create Firestore entry
-      await createLedger({ ...ledger, fileId });
+      await createLedger(newLedger);
 
-      dispatchLedger({ type: LedgerActions.ADD_LEDGER, payload: ledger });
-      dispatchLedger({ type: LedgerActions.SET_CURRENT_LEDGER, payload: ledger })
+      dispatchLedger({ type: LedgerActions.ADD_LEDGER, payload: newLedger });
+      dispatchLedger({ type: LedgerActions.SET_CURRENT_LEDGER, payload: newLedger })
       setLedgersLoading(false);
     } catch (err) {
       console.log('auth context ledger error caught....', err)

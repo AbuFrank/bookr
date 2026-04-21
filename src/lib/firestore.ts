@@ -9,8 +9,7 @@ import { collection, doc } from 'firebase/firestore';
  * @param accountId The ID of the account to find.
  * @returns The FirestoreAccount object with the matching ID, or undefined if no match is found.
  */
-export const findAccountById = (accounts: FirestoreAccount[], accountId: string | null): FirestoreAccount | undefined => {
-  if (!accountId) { return }
+export const findAccountById = (accounts: FirestoreAccount[], accountId: string): FirestoreAccount | undefined => {
   return accounts.find(account => account.id === accountId);
 };
 
