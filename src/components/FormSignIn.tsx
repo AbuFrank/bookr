@@ -11,8 +11,6 @@ interface FormSignInProps {
 }
 
 const FormSignIn: React.FC<FormSignInProps> = ({ handleSubmit,
-  onError,
-  setLoading,
   loading,
   email,
   setEmail,

@@ -133,7 +133,7 @@ const PageBooks = () => {
       setFiscalYear('')
       setGroupValue('')
 
-    } catch (error) {
+    } catch (error: any) {
       console.log('ERROR +++> ', error)
       if (error.message.includes('Token expired')) {
         console.log('Access token invalid');

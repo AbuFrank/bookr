@@ -9,32 +9,26 @@ const ReportTrigger: React.FC = () => {
   const [message, setMessage] = useState('');
 
   const handleUpdateValues = async () => {
-    if (!isAuthenticated || !user || !transactions?.length || !currentLedger || !accounts?.length) return;
+    if (!isAuthenticated || !user || !transactions?.length || !currentLedger || !accounts?.length || isProcessing) return;
 
-    // updates structure
-    // const updates = {
-    //   fileId: 'abc123',
-    //   E: [],
-    //   NE: [],
-    //   D: [],
-    //   ND: [],
-    // }
-
-    const updates = calculateAccountTotals(transactions, currentLedger, currentLedgers, accounts)
-
-    console.log('updates ==> ', updates)
-    setMessage(JSON.stringify(updates, null, 2))
-
-
-    const response = await googleDriveAPI.updateSheetCells(updates);
-
-    console.log("trigger button response ==> ", response)
-
-    if (isProcessing) {
-      console.log('already processing, skipping...')
-      return
-    }
     try {
+      // updates structure
+      // const updates = {
+      //   fileId: 'abc123',
+      //   E: [],
+      //   NE: [],
+      //   D: [],
+      //   ND: [],
+      // }
+      const updates = calculateAccountTotals(transactions, currentLedger, currentLedgers, accounts)
+
+      console.log('updates ==> ', updates)
+      setMessage(JSON.stringify(updates, null, 2))
+
+
+      const response = await googleDriveAPI.updateSheetCells(updates);
+
+      console.log("trigger button response ==> ", response)
 
     } catch (error) {
       console.error('Error generating report:', error);

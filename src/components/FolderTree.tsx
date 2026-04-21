@@ -10,12 +10,12 @@ interface FolderTreeProps {
 }
 
 const FolderTree: React.FC<FolderTreeProps> = ({ folders, className = '' }) => {
-  if (!folders || folders.length === 0) return null;
 
   const {
     setCurrentFiscalYear,
     setCurrentBook,
   } = useAuth();
+
 
   const navigate = useNavigate();
 
@@ -29,6 +29,7 @@ const FolderTree: React.FC<FolderTreeProps> = ({ folders, className = '' }) => {
     navigate('/transactions');
   };
 
+  if (!folders || folders.length === 0) return null;
   return (
     <div className={`p-4 bg-gray-50 rounded-lg ${className}`}>
       <h2 className="text-lg font-semibold text-gray-800 mb-3">Current Folder Structure</h2>

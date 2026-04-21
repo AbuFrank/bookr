@@ -8,7 +8,7 @@ interface TransactionListProps {
   accounts: FirestoreAccount[]
   transactions: FirestoreTransaction[];
   deleteTransaction: (id: string) => void;
-  transactionsLoading: Boolean;
+  transactionsLoading: boolean;
 }
 
 const TransactionList: React.FC<TransactionListProps> = ({ accounts, transactions, deleteTransaction, transactionsLoading }) => {

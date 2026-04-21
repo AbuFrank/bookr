@@ -65,10 +65,11 @@ const PageTransactions: React.FC = () => {
 
   useEffect(() => {
     // Navigate to books if no current year or book
+    console.log('navigate useEffect called..... ')
     if (!loading && !(currentFiscalYear?.id && currentBook)) {
       navigate('/books')
     }
-  }, [loading, currentFiscalYear, currentBook])
+  }, [loading, currentFiscalYear, currentBook, navigate])
 
 
   const sortedLedgers = useMemo(() => {

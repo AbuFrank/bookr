@@ -19,8 +19,8 @@ export interface FormTransactionProps {
   handleAccountFormChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
   handleAccountSubmit: () => void;
   setIsAccountFormToggled: (show: boolean) => void;
-  accountsLoading: Boolean;
-  isAccountFormToggled: Boolean;
+  accountsLoading: boolean;
+  isAccountFormToggled: boolean;
   newAccount: FormAccountData;
   currentAccount: FirestoreAccount | null;
   setNewAccount: (newAccount: FormAccountData) => void;
