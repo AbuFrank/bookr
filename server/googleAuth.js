@@ -46,29 +46,29 @@ export const getServiceAccountDrive = () => {
 };
 
 // Middleware to get Google Drive client (user context)
-export const getGoogleDriveClient = async (req, res, next) => {
-  try {
-    // Get access token from request headers
-    const accessToken = req.headers.authorization?.replace('Bearer ', '') ||
-      req.body.accessToken;
+// export const getGoogleDriveClient = async (req, res, next) => {
+//   try {
+//     // Get access token from request headers
+//     const accessToken = req.headers.authorization?.replace('Bearer ', '') ||
+//       req.body.accessToken;
 
-    if (!accessToken) {
-      return res.status(401).json({ error: 'Access token required' });
-    }
+//     if (!accessToken) {
+//       return res.status(401).json({ error: 'Access token required' });
+//     }
 
-    const auth = new google.auth.OAuth2();
-    auth.setCredentials({ access_token: accessToken });
+//     const auth = new google.auth.OAuth2();
+//     auth.setCredentials({ access_token: accessToken });
 
-    // Create drive client with user's credentials
-    req.drive = google.drive({ version: 'v3', auth });
-    req.spreadsheet = google.sheets({ version: 'v4', auth });
+//     // Create drive client with user's credentials
+//     req.drive = google.drive({ version: 'v3', auth });
+//     req.spreadsheet = google.sheets({ version: 'v4', auth });
 
-    next();
-  } catch (error) {
-    console.error('Error creating Google Drive client:', error);
-    res.status(500).json({ error: 'Failed to create Google Drive client' });
-  }
-};
+//     next();
+//   } catch (error) {
+//     console.error('Error creating Google Drive client:', error);
+//     res.status(500).json({ error: 'Failed to create Google Drive client' });
+//   }
+// };
 
 export const createFolder = async (name, userEmail, sharedFolderId, parentId) => {
   try {

@@ -1,5 +1,5 @@
 import express from 'express';
-import { copyTemplateFile, createFolder, getGoogleDriveClient, updateSpreadsheet } from './googleAuth.js';
+import { copyTemplateFile, createFolder, updateSpreadsheet } from './googleAuth.js';
 import path from 'path';
 
 const router = express.Router();
@@ -18,32 +18,32 @@ const sharedFolderId = process.env.GOOGLE_PARENT_FOLDER_ID
 
 // TODO remove /auth/google route in lieu of shared drive file storage
 // Route to initiate Google OAuth2 flow
-router.get('/auth/google', (req, res) => {
-  try {
-    const url = oauth2Client.generateAuthUrl({
-      access_type: 'offline',
-      scope: [
-        'https://www.googleapis.com/auth/drive',
-        'https://www.googleapis.com/auth/drive.file'
-      ],
-      prompt: 'consent'
-    });
+// router.get('/auth/google', (req, res) => {
+//   try {
+//     const url = oauth2Client.generateAuthUrl({
+//       access_type: 'offline',
+//       scope: [
+//         'https://www.googleapis.com/auth/drive',
+//         'https://www.googleapis.com/auth/drive.file'
+//       ],
+//       prompt: 'consent'
+//     });
 
-    console.log('Authorization URL:', url);
+//     console.log('Authorization URL:', url);
 
-    // Redirect user to Google OAuth2 consent page
-    res.redirect(url);
-  } catch (error) {
-    console.error('Error generating auth URL:', error);
-    res.status(500).json({
-      error: 'Failed to generate authorization URL',
-      message: error.message
-    });
-  }
-});
+//     // Redirect user to Google OAuth2 consent page
+//     res.redirect(url);
+//   } catch (error) {
+//     console.error('Error generating auth URL:', error);
+//     res.status(500).json({
+//       error: 'Failed to generate authorization URL',
+//       message: error.message
+//     });
+//   }
+// });
 
 // Create folder for the user
-router.post('/folder', getGoogleDriveClient, async (req, res) => {
+router.post('/folder', async (req, res) => {
   try {
     const { name, parentId, userEmail } = req.body;
 
@@ -71,7 +71,7 @@ router.post('/folder', getGoogleDriveClient, async (req, res) => {
 });
 
 // Copy file from template to user's drive
-router.post('/files/copy', getGoogleDriveClient, async (req, res) => {
+router.post('/files/copy', async (req, res) => {
   try {
     const { fileName, email, parentFolderId } = req.body;
 
@@ -127,7 +127,7 @@ router.post('/files/copy', getGoogleDriveClient, async (req, res) => {
 });
 
 // Update multiple cells in the Google Sheet
-router.put('/sheets/updates/', getGoogleDriveClient, async (req, res) => {
+router.put('/sheets/updates/', async (req, res) => {
   try {
     // const { fileId } = req.params;
     const { updates } = req.body;
@@ -166,90 +166,90 @@ router.put('/sheets/updates/', getGoogleDriveClient, async (req, res) => {
 })
 
 // Update a cell in Google Sheet
-router.put('/sheets/:fileId/values/:range', getGoogleDriveClient, async (req, res) => {
-  try {
-    const { fileId, range } = req.params;
-    const { values } = req.body;
+// router.put('/sheets/:fileId/values/:range', async (req, res) => {
+//   try {
+//     const { fileId, range } = req.params;
+//     const { values } = req.body;
 
-    if (!values || !Array.isArray(values)) {
-      return res.status(400).json({ error: 'Invalid values format' });
-    }
+//     if (!values || !Array.isArray(values)) {
+//       return res.status(400).json({ error: 'Invalid values format' });
+//     }
 
-    const response = await req.drive.spreadsheets.values.update({
-      spreadsheetId: fileId,
-      range: range,
-      valueInputOption: 'USER_ENTERED',
-      requestBody: { values }
-    });
+//     const response = await req.drive.spreadsheets.values.update({
+//       spreadsheetId: fileId,
+//       range: range,
+//       valueInputOption: 'USER_ENTERED',
+//       requestBody: { values }
+//     });
 
-    res.json(response.data);
-  } catch (error) {
-    console.error('Error updating sheet:', error);
-    // Handle specific Google API errors
-    if (error.code === 400) {
-      return res.status(400).json({ error: 'Invalid request parameters' });
-    }
-    if (error.code === 403) {
-      return res.status(403).json({ error: 'Access denied' });
-    }
-    if (error.code === 404) {
-      return res.status(404).json({ error: 'File not found' });
-    }
-    res.status(500).json({ error: 'Failed to update sheet' });
-  }
-});
+//     res.json(response.data);
+//   } catch (error) {
+//     console.error('Error updating sheet:', error);
+//     // Handle specific Google API errors
+//     if (error.code === 400) {
+//       return res.status(400).json({ error: 'Invalid request parameters' });
+//     }
+//     if (error.code === 403) {
+//       return res.status(403).json({ error: 'Access denied' });
+//     }
+//     if (error.code === 404) {
+//       return res.status(404).json({ error: 'File not found' });
+//     }
+//     res.status(500).json({ error: 'Failed to update sheet' });
+//   }
+// });
 
 // Get file metadata
-router.get('/files/:fileId', getGoogleDriveClient, async (req, res) => {
-  try {
-    const { fileId } = req.params;
+// router.get('/files/:fileId', getGoogleDriveClient, async (req, res) => {
+//   try {
+//     const { fileId } = req.params;
 
-    const response = await req.drive.files.get({
-      fileId,
-      fields: 'id,name,mimeType,modifiedTime'
-    });
+//     const response = await req.drive.files.get({
+//       fileId,
+//       fields: 'id,name,mimeType,modifiedTime'
+//     });
 
-    res.json(response.data);
-  } catch (error) {
-    console.error('Error getting file:', error);
-    if (error.code === 404) {
-      return res.status(404).json({ error: 'File not found' });
-    }
-    res.status(500).json({ error: 'Failed to get file' });
-  }
-});
+//     res.json(response.data);
+//   } catch (error) {
+//     console.error('Error getting file:', error);
+//     if (error.code === 404) {
+//       return res.status(404).json({ error: 'File not found' });
+//     }
+//     res.status(500).json({ error: 'Failed to get file' });
+//   }
+// });
 
 // List files
-router.get('/files', getGoogleDriveClient, async (req, res) => {
-  try {
-    const response = await req.drive.files.list({
-      pageSize: 10,
-      fields: 'files(id,name,mimeType,modifiedTime)'
-    });
+// router.get('/files', getGoogleDriveClient, async (req, res) => {
+//   try {
+//     const response = await req.drive.files.list({
+//       pageSize: 10,
+//       fields: 'files(id,name,mimeType,modifiedTime)'
+//     });
 
-    res.json(response.data);
-  } catch (error) {
-    console.error('Error listing files:', error);
-    res.status(500).json({ error: 'Failed to list files' });
-  }
-});
+//     res.json(response.data);
+//   } catch (error) {
+//     console.error('Error listing files:', error);
+//     res.status(500).json({ error: 'Failed to list files' });
+//   }
+// });
 
 // Get spreadsheet metadata
-router.get('/sheets/:fileId', getGoogleDriveClient, async (req, res) => {
-  try {
-    const { fileId } = req.params;
+// router.get('/sheets/:fileId', getGoogleDriveClient, async (req, res) => {
+//   try {
+//     const { fileId } = req.params;
 
-    const response = await req.drive.spreadsheets.get({
-      spreadsheetId: fileId,
-      fields: 'properties,sheets'
-    });
+//     const response = await req.drive.spreadsheets.get({
+//       spreadsheetId: fileId,
+//       fields: 'properties,sheets'
+//     });
 
-    res.json(response.data);
-  } catch (error) {
-    console.error('Error getting spreadsheet:', error);
-    res.status(500).json({ error: 'Failed to get spreadsheet' });
-  }
-});
+//     res.json(response.data);
+//   } catch (error) {
+//     console.error('Error getting spreadsheet:', error);
+//     res.status(500).json({ error: 'Failed to get spreadsheet' });
+//   }
+// });
 
 export default router;
 

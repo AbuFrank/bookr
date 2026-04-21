@@ -1,6 +1,6 @@
 import { auth, db, googleProvider } from './firebase';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
+import { signInWithPopup, signOut } from 'firebase/auth';
 import type { User } from 'firebase/auth';
 
 export interface LoginCredentials {
@@ -21,17 +21,17 @@ export const signInWithGoogle = async (): Promise<User> => {
     googleProvider.setCustomParameters({
       prompt: 'select_account'
     });
-    googleProvider.addScope('https://www.googleapis.com/auth/drive.file'); // For Drive folder creation
-    googleProvider.addScope('https://www.googleapis.com/auth/spreadsheets'); // For Sheets updates
+    // googleProvider.addScope('https://www.googleapis.com/auth/drive.file'); // For Drive folder creation
+    // googleProvider.addScope('https://www.googleapis.com/auth/spreadsheets'); // For Sheets updates
 
     const result = await signInWithPopup(auth, googleProvider);
     const user = result.user;
 
-    const credential = GoogleAuthProvider.credentialFromResult(result);
-    const accessToken = credential?.accessToken
+    // const credential = GoogleAuthProvider.credentialFromResult(result);
+    // const accessToken = credential?.accessToken
 
-    const refreshToken = result._tokenResponse.refreshToken;
-    const expiresIn = result._tokenResponse.expiresIn;
+    // const refreshToken = result._tokenResponse.refreshToken;
+    // const expiresIn = result._tokenResponse.expiresIn;
 
 
     // Create user document if it doesn't exist
@@ -49,15 +49,15 @@ export const signInWithGoogle = async (): Promise<User> => {
     }
 
     // Store the access token in Firestore
-    if (accessToken) {
-      const tokenRef = doc(db, 'userTokens', user.uid);
-      await setDoc(tokenRef, {
-        accessToken,
-        refreshToken,
-        expiresIn,
-        updatedAt: new Date()
-      });
-    }
+    // if (accessToken) {
+    //   const tokenRef = doc(db, 'userTokens', user.uid);
+    //   await setDoc(tokenRef, {
+    //     accessToken,
+    //     refreshToken,
+    //     expiresIn,
+    //     updatedAt: new Date()
+    //   });
+    // }
 
     return user;
   } catch (error: any) {
