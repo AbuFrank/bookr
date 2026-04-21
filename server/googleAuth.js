@@ -148,37 +148,9 @@ export const copyTemplateFile = async (templateId, fileName, userEmail, sharedFo
       supportsAllDrives: true,
     });
 
+    // TODO update "WEEK N" and "MONTH/YYYY" cells
+
     console.log('Attempting file transfer of new file with ID: ', newFileId)
-
-    // await drive.files.update({
-    //   fileId: newFileId,
-    //   addParents: parentFolderId,
-    //   removeParents: sharedFolderId,
-    //   supportsAllDrives: true,
-    //   fields: 'id, parents'
-    // });
-    // console.log('File moved to parent folder:', parentFolderId);
-    // Set user permissions
-
-    // Set user permissions
-    // console.log('attempting file permissions for user ==> ', userEmail)
-    // await drive.permissions.create({
-    //   fileId: newFileId,
-    //   requestBody: {
-    //     role: 'writer',
-    //     type: 'user',
-    //     emailAddress: userEmail,
-    //   },
-    //   supportsAllDrives: true,
-    // });
-
-    // await drive.files.update({
-    //   fileId: newFileId,
-    //   addParents: parentFolderId,
-    //   supportsAllDrives: true,
-    //   fields: 'id, parents'
-    // });
-    // console.log('File moved to parent folder:', parentFolderId);
 
     return {
       fileId: newFileId,
@@ -187,84 +159,6 @@ export const copyTemplateFile = async (templateId, fileName, userEmail, sharedFo
 
   } catch (error) {
     console.error('Error in copyTemplateFile:', error);
-    throw error;
-  }
-};
-
-// Batch update spreadsheet
-export const updateBatchCells = async (fileId, updates) => {
-  try {
-    const { sheets } = getServiceAccountDrive();
-    console.log('Updating sheet cells...');
-
-    const fetchFileResponse = await sheets.spreadsheets.get({
-      spreadsheetId: fileId
-    });
-
-    console.log('Available sheets:', fetchFileResponse.data.sheets);
-
-    const sheetId = fetchFileResponse.data.sheets[0].properties.sheetId
-
-    // Prepare the update requests
-    const requests = updates.map(update => {
-      const { column, values, startRow = 4 } = update; // Default to row 4 (0-indexed)
-
-      // Convert 0-based indexing to 1-based for spreadsheet
-      const startRowIndex = startRow;
-      const endRowIndex = startRow + values.length;
-
-      // Create rows for each "column" update
-      const rows = values.map((value, index) => {
-        // Handle different types of values
-        let userEnteredValue;
-
-        if (typeof value === 'number') {
-          userEnteredValue = { numberValue: value };
-        } else if (typeof value === 'string' && !isNaN(Number(value)) && isFinite(value)) {
-          // If it's a string that represents a number
-          userEnteredValue = { numberValue: Number(value) };
-        } else {
-          // Treat as text
-          userEnteredValue = { stringValue: String(value) };
-        }
-
-        return {
-          values: [
-            {
-              userEnteredValue
-            }
-          ]
-        };
-      });
-
-      return {
-        updateCells: {
-          range: {
-            sheetId: sheetId,
-            startRowIndex: startRowIndex,
-            endRowIndex: endRowIndex,
-            startColumnIndex: column,
-            endColumnIndex: column + 1
-          },
-          rows: rows,
-          fields: 'userEnteredValue'
-        }
-      };
-    });
-
-    // Execute the batch update
-    const response = await sheets.spreadsheets.batchUpdate({
-      spreadsheetId: fileId,
-      requestBody: {
-        requests: requests
-      }
-    });
-
-    console.log('Sheet updated successfully:', response.data);
-    return response.data;
-
-  } catch (error) {
-    console.error('Error updating sheet cells:', error);
     throw error;
   }
 };
@@ -293,3 +187,196 @@ export const getSheetInfo = async (fileId) => {
     throw error;
   }
 };
+
+const cellLocations = {
+  "E": { row: 4, accountName: 9, value: 11, previousTotal: 13 }, // Row 5. Columns J, L, N
+  "NE": { row: 4, accountName: 0, value: 2, previousTotal: 4 }, // Row 5. Columns A, C, E
+  "D": { row: 20, accountName: 1, value: 6 }, // Row 21, Columns B, G
+  "ND": { row: 36, accountName: 1, value: 6 }, // Row 37, Colmns B, G
+  "lastDTotal": { row: 30, col: 6 }, // Row 31, Column G
+  "lastNDTotal": { row: 44, col: 6 }, // Row 45, Column G
+}
+
+const MaxE = 43;
+const MaxNE = 6;
+const MaxD = 8;
+const MaxND = 6;
+
+export async function updateSpreadsheet(spreadsheetId, allUpdates) {
+  try {
+    const { sheets } = getServiceAccountDrive();
+    console.log('Updating sheet cells...');
+
+    const fetchFileResponse = await sheets.spreadsheets.get({
+      spreadsheetId
+    });
+
+    console.log('Available sheets:', fetchFileResponse.data.sheets);
+
+    const sheetId = fetchFileResponse.data.sheets[0].properties.sheetId;
+    console.log("///////////")
+    console.log("///////////")
+    console.log("///////////")
+    console.log("///////////")
+    console.log("///////////")
+    console.log('sheetData')
+    console.log("spreadsheet ID ==> ", sheetId)
+
+    const requests = [];
+    const startRow = 4; // 0-indexed row 4
+
+    console.log("sheet id ==> ", sheetId)
+
+    console.log("ALL UPDATES??", allUpdates)
+    const { lastDTotal, lastNDTotal, ...typeUpdates } = allUpdates
+
+    // example typeUpdates
+    // const typeUpdates = {
+    //   "E": [{ "accountName": "Vehicle", "value": 45, "previousTotal": 5050 }],
+    //   "NE": [{ "accountName": "Groceries", "value": 50, "previousTotal": 0 }],
+    //   "D": [{ "accountName": "Dog Sit", "value": 600, "previousTotal": 2000 }, { "accountName": "Paycheck", "value": 0, "previousTotal": 3600 }, { "accountName": "Unemployment", "value": 1800, "previousTotal": 0 }],
+    //   "ND": []
+    // }
+
+    // Add Deposits and Non-Income "Total Up To This Week"
+    new Array('lastDTotal', 'lastNDTotal').forEach(lastTotal => {
+      console.log("last total???? ", allUpdates[lastTotal])
+      console.log('cell location for last total?? ', cellLocations[lastTotal])
+      const rowIndex = cellLocations[lastTotal].row
+      const colIndex = cellLocations[lastTotal].col
+      requests.push({
+        updateCells: {
+          range: {
+            sheetId,
+            startRowIndex: rowIndex,
+            endRowIndex: rowIndex + 1,
+            startColumnIndex: colIndex,
+            endColumnIndex: colIndex + 1,
+          },
+          rows: [{
+            values: [
+              {
+                userEnteredValue: {
+                  numberValue: allUpdates[lastTotal]
+                }
+              }
+            ]
+          }],
+          fields: 'userEnteredValue'
+        }
+      });
+    })
+
+    console.log("type updates??", typeUpdates)
+    // Each account type: Expense (E), Non-Deductible Expense (NE), Receipts (D), Non-Income Deposits (ND)
+    Object.entries(typeUpdates).forEach(([type, typeData]) => {
+      const cellLocation = cellLocations[type]
+      console.log("cell location!!!!! ", cellLocation)
+
+      // TODO sort typeData by accountName
+
+      // Each account
+      for (let index = 0; index < typeData.length; index++) {
+        const row = typeData[index]
+        // Prevent updates beyond space allotment in file
+        if (
+          type === "E" && index === MaxE ||
+          type === "NE" && index === MaxNE ||
+          type === "D" && index === MaxD ||
+          type === "ND" && index === MaxND
+        ) {
+          break;
+        }
+
+        const rowIndex = cellLocation.row + index;
+
+        console.log("row ", rowIndex, " ==> ", row)
+
+        const { accountName, value, previousTotal } = row;
+
+        // Account Name
+        requests.push({
+          updateCells: {
+            range: {
+              sheetId,
+              startRowIndex: rowIndex,
+              endRowIndex: rowIndex + 1,
+              startColumnIndex: cellLocation.accountName,
+              endColumnIndex: cellLocation.accountName + 1,
+            },
+            rows: [{
+              values: [
+                {
+                  userEnteredValue: {
+                    stringValue: accountName
+                  }
+                }
+              ]
+            }],
+            fields: 'userEnteredValue'
+          }
+        });
+
+        requests.push({
+          updateCells: {
+            range: {
+              sheetId,
+              startRowIndex: rowIndex,
+              endRowIndex: rowIndex + 1,
+              startColumnIndex: cellLocation.value,
+              endColumnIndex: cellLocation.value + 1,
+            },
+            rows: [{
+              values: [
+                {
+                  userEnteredValue: {
+                    numberValue: value
+                  }
+                }
+              ]
+            }],
+            fields: 'userEnteredValue'
+          }
+        });
+
+        if (type === "E" || type === "NE") {
+          requests.push({
+            updateCells: {
+              range: {
+                sheetId,
+                startRowIndex: rowIndex,
+                endRowIndex: rowIndex + 1,
+                startColumnIndex: cellLocation.previousTotal,
+                endColumnIndex: cellLocation.previousTotal + 1
+              },
+              rows: [{
+                values: [
+                  {
+                    userEnteredValue: {
+                      numberValue: previousTotal
+                    }
+                  }
+                ]
+              }],
+              fields: 'userEnteredValue'
+            }
+          });
+        }
+      };
+    })
+
+    // Execute batch update
+    const response = await sheets.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: {
+        requests,
+      },
+    });
+
+    console.log('Spreadsheet updated successfully');
+    return response;
+  } catch (error) {
+    console.error('Error updating spreadsheet:', error);
+    throw error;
+  }
+}

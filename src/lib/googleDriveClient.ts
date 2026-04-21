@@ -15,7 +15,7 @@ interface DriveFile {
 
 interface GoogleDriveAPI {
   setCurrentUser: (user: User | null) => void;
-  updateSheetCells: (spreadsheetId: string, updates: Update[]) => Promise<any>;
+  updateSheetCells: (updates: Update[]) => Promise<any>;
   getAccessToken: () => Promise<string>;
   createFolder: (name: string, parentId: string) => Promise<Folder>;
   storeAccessToken: (accessToken: string) => Promise<void>;
@@ -154,7 +154,7 @@ const googleDriveAPI: GoogleDriveAPI = {
     }
   },
 
-  async updateSheetCells(spreadsheetId: string, updates: Update[]): Promise<void> {
+  async updateSheetCells(updates: Update[]): Promise<void> {
     // If we don't have a user ID or token, try to get it from context
     try {
       console.log('no current userId found, fetching... ')
@@ -164,12 +164,13 @@ const googleDriveAPI: GoogleDriveAPI = {
       console.log('///////////////////')
       console.log('accessToken ==> ', accessToken)
       console.log('current User ==> ', currentUser?.email)
-      console.log('spreadsheetId ==> ', spreadsheetId)
+      // console.log('spreadsheetId ==> ', spreadsheetId)
       console.log('Updates ==> ', updates)
 
       console.log('update sheet cells server calling...')
 
-      const response = await fetch(`/api/sheets/${spreadsheetId}/updates`, {
+      // TODO no longer need access token due to shared folder and reader access
+      const response = await fetch(`/api/sheets/updates`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -183,7 +184,7 @@ const googleDriveAPI: GoogleDriveAPI = {
       console.log('//////////////////')
       console.log('updateSheetCells response ==> ', response)
     } catch (error) {
-      console.error('Error updating spreadsheet:', { error, spreadsheetId });
+      console.error('Error updating spreadsheet:', error);
       throw error;
     }
   },

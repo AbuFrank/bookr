@@ -1,5 +1,5 @@
 import express from 'express';
-import { copyTemplateFile, createFolder, getGoogleDriveClient, getServiceAccountDrive, updateBatchCells } from './googleAuth.js';
+import { copyTemplateFile, createFolder, getGoogleDriveClient, updateSpreadsheet } from './googleAuth.js';
 import path from 'path';
 
 const router = express.Router();
@@ -12,6 +12,7 @@ const templateId = process.env.GOOGLE_TEMPLATE_ID
 const serviceEmail = process.env.GOOGLE_SERVICE_EMAIL
 const sharedFolderId = process.env.GOOGLE_PARENT_FOLDER_ID
 
+// TODO remove /auth/google route in lieu of shared drive file storage
 // Route to initiate Google OAuth2 flow
 router.get('/auth/google', (req, res) => {
   try {
@@ -99,24 +100,7 @@ router.post('/files/copy', getGoogleDriveClient, async (req, res) => {
     );
 
     console.log('copy template result ==> ', result)
-    // const newFileId = result.fileId
-    const newFileId = "12h8KZdEp0L26ByrbOZKfr5Y05JDIBixj_y8Mht-Gp78"
-    console.log('Attempting file transfer of new file with ID: ', newFileId)
-
-    await drive.files.update({
-      fileId: newFileId,
-      addParents: parentFolderId,
-      supportsAllDrives: true,
-      fields: 'id, parents'
-    });
-    console.log('File moved to parent folder:', parentFolderId);
-    // await drive.files.update({
-    //   fileId: newFileId,
-    //   addParents: parentFolderId,
-    //   supportsAllDrives: true,
-    //   fields: 'id, parents'
-    // });
-    // console.log('File moved to parent folder:', parentFolderId);
+    const newFileId = result.fileId
 
 
     res.json(result)
@@ -139,86 +123,26 @@ router.post('/files/copy', getGoogleDriveClient, async (req, res) => {
 });
 
 // Update multiple cells in the Google Sheet
-router.put('/sheets/:fileId/updates/', getGoogleDriveClient, async (req, res) => {
+router.put('/sheets/updates/', getGoogleDriveClient, async (req, res) => {
   try {
-    const { fileId } = req.params;
+    // const { fileId } = req.params;
     const { updates } = req.body;
 
     if (!updates || !Array.isArray(updates)) {
       return res.status(400).json({ error: 'Invalid updates format' });
     }
 
-    const { sheets } = req.sheets;
-    console.log('Updating sheet cells...');
+    // update each corresponding spreadsheet file provided by the update data
+    Promise.all(updates.map(({ fileId, ...allUpdates }) => updateSpreadsheet(fileId, allUpdates))).then(responses => {
+      const results = responses.map((result, idx) => ({
+        index: idx,
+        success: result.status === 200 ? true : false,
+        data: result.data
 
-    const fetchFileResponse = await sheets.spreadsheets.get({
-      spreadsheetId: fileId
-    });
+      }))
+      console.log('response ==> ', results)
 
-    console.log('Available sheets:', fetchFileResponse.data.sheets);
-
-    const sheetId = fetchFileResponse.data.sheets[0].properties.sheetId
-
-    // Prepare the update requests
-    const requests = updates.map(update => {
-      const { column, values, startRow = 4 } = update; // Default to row 4 (0-indexed)
-
-      // Convert 0-based indexing to 1-based for spreadsheet
-      const startRowIndex = startRow;
-      const endRowIndex = startRow + values.length;
-
-      // Create rows for each "column" update
-      const rows = values.map((value, index) => {
-        // Handle different types of values
-        let userEnteredValue;
-
-        if (typeof value === 'number') {
-          userEnteredValue = { numberValue: value };
-        } else if (typeof value === 'string' && !isNaN(Number(value)) && isFinite(value)) {
-          // If it's a string that represents a number
-          userEnteredValue = { numberValue: Number(value) };
-        } else {
-          // Treat as text
-          userEnteredValue = { stringValue: String(value) };
-        }
-
-        return {
-          values: [
-            {
-              userEnteredValue
-            }
-          ]
-        };
-      });
-
-      return {
-        updateCells: {
-          range: {
-            sheetId: sheetId,
-            startRowIndex: startRowIndex,
-            endRowIndex: endRowIndex,
-            startColumnIndex: column,
-            endColumnIndex: column + 1
-          },
-          rows: rows,
-          fields: 'userEnteredValue'
-        }
-      };
-    });
-
-    // Execute the batch update
-    const response = await sheets.spreadsheets.batchUpdate({
-      spreadsheetId: fileId,
-      requestBody: {
-        requests: requests
-      }
-    });
-
-    console.log('response ==> ', response.data)
-
-    res.json({
-      success: true,
-      message: "Data updated successfully"
+      res.json(results)
     })
 
   } catch (error) {
