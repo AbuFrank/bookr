@@ -6,10 +6,14 @@ const router = express.Router();
 
 // Load environment variables
 import dotenv from 'dotenv';
-dotenv.config({ path: path.join(process.cwd(), 'server/.env.local') });
+// Load environment variables - works locally and in Vercel
+console.log('NODE env? ', process.env.NODE_ENV)
+if (!process.env.NODE_ENV) {
+  // Load local .env only in development
+  dotenv.config({ path: path.join(process.cwd(), 'server/.env.local') });
+}
 
 const templateId = process.env.GOOGLE_TEMPLATE_ID
-const serviceEmail = process.env.GOOGLE_SERVICE_EMAIL
 const sharedFolderId = process.env.GOOGLE_PARENT_FOLDER_ID
 
 // TODO remove /auth/google route in lieu of shared drive file storage

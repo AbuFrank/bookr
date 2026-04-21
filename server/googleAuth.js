@@ -1,19 +1,31 @@
 import { google } from 'googleapis';
 import fs from 'fs';
 import path from 'path';
-import dotenv from 'dotenv';
 
 let serviceAccountClient = null;
 
 // Get absolute path to service account key
-const keyPath = path.join(process.cwd(), 'server/cfcc-service-account-key.json');
+// const keyPath = path.join(process.cwd(), 'server/cfcc-service-account-key.json');
 
 // Service account that has access to the template file
 export const getServiceAccountDrive = () => {
   if (!serviceAccountClient) {
-    const keyFile = JSON.parse(
-      fs.readFileSync(path.join(keyPath), 'utf8')
-    );
+
+    let keyFile;
+
+    // Check if we're in Vercel (production) or local
+    if (process.env.VERCEL_ENV || process.env.NODE_ENV === 'production') {
+      // Use base64 environment variable in production
+      const base64Key = process.env.GOOGLE_SERVICE_ACCOUNT_KEY_BASE64;
+      if (!base64Key) {
+        throw new Error('GOOGLE_SERVICE_ACCOUNT_KEY_BASE64 not found in environment variables');
+      }
+      keyFile = JSON.parse(Buffer.from(base64Key, 'base64').toString('utf-8'));
+    } else {
+      // Use local file in development
+      const keyPath = path.join(process.cwd(), 'server/cfcc-service-account-key.json');
+      keyFile = JSON.parse(fs.readFileSync(keyPath, 'utf8'));
+    }
 
     const auth = new google.auth.GoogleAuth({
       credentials: keyFile,

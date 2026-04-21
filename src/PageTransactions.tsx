@@ -137,17 +137,14 @@ const PageTransactions: React.FC = () => {
 
     try {
       // TODO create more robust error management and form requirements
-      const result = await addLedger(ledgerData);
-      if (result?.error) {
-        return
-      }
+      await addLedger(ledgerData);
       setNewLedger({
         name: '',
         description: '',
         dateCreated: new Date(),
       });
       setShowLedgerForm(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating ledger:', error);
       if (error?.message?.includes('Token expired')) {
         console.log('Access token invalid');

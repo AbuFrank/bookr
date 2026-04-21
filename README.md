@@ -107,6 +107,16 @@ npm run dev
 3. **Record Transactions**: Add income and expenses with details
 4. **View Reports**: Generate financial reports in Google Sheets
 
+## Deployment
+
+### Vercel
+
+1. Import git repository
+1. Add local and server env variables
+1. Convert JSON key into base64 env variable and add to vercel
+   - `base64 -i server/service-account-key.json -o service-account-key-base64.txt`
+
+
 ## 📁 Project Structure
 
 ```

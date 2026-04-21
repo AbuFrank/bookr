@@ -257,10 +257,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       dispatchLedger({ type: LedgerActions.ADD_LEDGER, payload: newLedger });
       dispatchLedger({ type: LedgerActions.SET_CURRENT_LEDGER, payload: newLedger })
       setLedgersLoading(false);
-    } catch (err) {
+    } catch (err: any) {
       console.log('auth context ledger error caught....', err)
       setLedgersLoading(false);
-      throw new Error(err.message)
+      if (err.message) {
+        throw new Error(err.message)
+      } else {
+        throw new Error("Unknown error in createLedger()")
+      }
     }
   };
 
