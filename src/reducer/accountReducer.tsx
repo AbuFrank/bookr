@@ -33,6 +33,11 @@ const accountReducer = (state: AccountState = initialState, action: any) => {
         ...state,
         currentAccounts: action.payload,
       };
+    case AccountActions.RESET:
+      return {
+        accounts: [],
+        currentAccounts: []
+      };
     default:
       return state;
   }

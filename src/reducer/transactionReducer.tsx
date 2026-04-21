@@ -25,6 +25,11 @@ export const transactionReducer = (state: TransactionState, action: any): Transa
       return { ...state, transactions: action.payload };
     case TransactionActions.SET_CURRENT_TRANSACTIONS:
       return { ...state, currentTransactions: action.payload };
+    case TransactionActions.RESET:
+      return {
+        transactions: [],
+        currentTransactions: []
+      };
     default:
       return state;
   }

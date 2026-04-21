@@ -173,7 +173,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     if (ledgerState.currentLedger) {
 
-      const currentLedgerTransactions = transactionState.transactions.filter(t => t.ledgerId === ledgerState.currentLedger.id)
+      const currentLedgerTransactions = transactionState.transactions.filter(t => t.ledgerId === ledgerState.currentLedger?.id)
       dispatchTransaction({ type: TransactionActions.SET_CURRENT_TRANSACTIONS, payload: currentLedgerTransactions })
     }
   }, [transactionState.transactions, ledgerState.currentLedger])
@@ -286,6 +286,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = async (): Promise<void> => {
     try {
       await signOutUser();
+      // Reset all state to initial values
+      dispatchTransaction({ type: TransactionActions.RESET, payload: undefined });
+      dispatchAccount({ type: AccountActions.RESET, payload: undefined });
+      dispatchLedger({ type: LedgerActions.RESET, payload: undefined });
+      dispatchFolder({ type: FolderActions.RESET, payload: undefined });
+
+      // Reset user and auth state
+      setUser(null);
+      setIsAuthenticated(false);
       navigate('/login');
     } catch (error: any) {
       throw new Error(error.message || 'Logout failed');

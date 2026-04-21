@@ -1,9 +1,9 @@
-import { LedgerActions, type FirestoreLedger } from "../types/ledgerTypes";
+import { LedgerActions, type Ledger } from "../types/ledgerTypes";
 
 type LedgerState = {
-    ledgers: FirestoreLedger[];
-    currentLedgers: FirestoreLedger[];
-    currentLedger: FirestoreLedger | null;
+    ledgers: Ledger[];
+    currentLedgers: Ledger[];
+    currentLedger: Ledger | null;
 };
 
 const initialState: LedgerState = {
@@ -56,6 +56,13 @@ const ledgerReducer = (state: LedgerState = initialState, action: any): LedgerSt
             return {
                 ...state,
                 currentLedger: action.payload,
+            };
+
+        case LedgerActions.RESET:
+            return {
+                ledgers: [],
+                currentLedgers: [],
+                currentLedger: null
             };
 
         default:

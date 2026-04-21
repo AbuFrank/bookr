@@ -102,6 +102,14 @@ const folderReducer = (state: FolderState = initialState, action: any): FolderSt
       };
     }
 
+    case FolderActions.RESET:
+      return {
+        folders: [],
+        currentChildren: [],
+        currentYear: null,
+        currentBook: null
+      };
+
     default:
       return state;
   }
