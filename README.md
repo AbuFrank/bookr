@@ -6,10 +6,35 @@ A modern, web-based personal finance tracking application built with React, Vite
 
 Contributors welcomed!
 
-- retroactive updates
-    - Since there can be multiple books for a given fiscal year, there needs to be a way to update YTD totals if a past book is updated.
-    - one option is to use firestore triggers to calculate totals any time a transaction is _updated_
-- Do folder and file updates directly from client (with the exception of template copy)
+### - Sheets API
+
+- remove /auth/google route in lieu of shared drive file storage
+- update "WEEK N" and "MONTH/YYYY" cells on ledger creation/update
+- add ability to update ledger title and description
+- sort typeData by accountName
+
+### - Transactions Page
+
+- create more robust error management and form requirements
+- add a isSynced state to the ledger when state changes (transaction and ledger info) that is remove when the update ledger button is pressed and hide button
+- move type to account instead?
+
+### - Routing
+
+- add role for admin routes. Bonus: allow admin to see and edit all user's ledgers
+
+### - Totaling
+
+- save calculated totals to each ledger in firestore?
+- reduce loop down to only relevant updated ledgers
+- make sure accounts can't be used on different types (see moving types to accounts above)
+- add error messaging for going over space allotment in file for each transaction type (currently it's prevented in the APIs but the user is not notified)
+
+### - Google client API
+
+- use `emailVerified`
+- no longer need access token due to shared folder and reader access
+- remove access token storage/retrieval in lieu of revalidate()
 
 ## 🚀 Features
 
@@ -45,7 +70,7 @@ Contributors welcomed!
 ### Reporting
 - Automatic financial reports via Google Sheets integration
 - Real-time data syncing between app and spreadsheet
-- Customizable report templates
+- Customizable report templates (TODO)
 
 ### Data Management
 - Real-time data synchronization with Firestore
