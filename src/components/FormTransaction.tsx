@@ -1,5 +1,5 @@
+import type { SubmitEvent } from 'react';
 import type { FirestoreAccount, FormAccountData } from '../types/accountTypes';
-import type { FormEvent } from 'react';
 import type { FormData } from '../types/transactionTypes';
 import MyDatePicker from './MyDatePicker';
 
@@ -10,7 +10,7 @@ const inputClass = "w-full px-3 py-2 border border-gray-300 rounded-lg focus:out
 export interface FormTransactionProps {
   errors: { [key: string]: string }
   formData: FormData,
-  onTransactionSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onTransactionSubmit: (event: SubmitEvent) => void;
   onTransactionFormChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
   onTransactionCancel: () => void;
   onDateChange: (date: Date | null) => void;

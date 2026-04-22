@@ -11,8 +11,8 @@ import ReportTrigger from './components/ReportTrigger';
 import type { LedgerInput } from './types/ledgerTypes';
 import { useNavigate } from 'react-router-dom';
 import { calculateTotals } from './helpers/ledger';
-import LoadingSpinner from './components/LoadingSpinner';
 import { reauthenticate } from './firebase/authService';
+import FormLedger from './components/FormLedger';
 
 const PageTransactions: React.FC = () => {
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
@@ -78,6 +78,8 @@ const PageTransactions: React.FC = () => {
     );
   }, [ledgers]);
 
+  const ledgerLink = useMemo(() => currentLedger ? `https://docs.google.com/spreadsheets/d/${currentLedger.fileId}` : '', [currentLedger])
+
   const handleTransactionFormChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
@@ -115,7 +117,7 @@ const PageTransactions: React.FC = () => {
     setFormData(prev => ({ ...prev, date: date || new Date() }));
   };
 
-  const handleLedgerSubmit = async (e: React.FormEvent) => {
+  const handleLedgerSubmit = async (e: React.SubmitEvent) => {
     e.preventDefault();
 
     if (!newLedger.name.trim()) return;
@@ -283,70 +285,12 @@ const PageTransactions: React.FC = () => {
               </div>
 
               {showLedgerForm && (
-                <form onSubmit={handleLedgerSubmit} className="mb-4 rounded-lg border border-gray-200 p-4 space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Name
-                    </label>
-                    <input
-                      type="text"
-                      name="name"
-                      value={newLedger.name}
-                      onChange={handleLedgerFormChange}
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2"
-                      placeholder="Quarter 1"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Description
-                    </label>
-                    <textarea
-                      name="description"
-                      value={newLedger.description}
-                      onChange={handleLedgerFormChange}
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2"
-                      rows={3}
-                      placeholder="January through March"
-                    />
-                  </div>
-
-                  {/* <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Date Created
-                    </label>
-                    <input
-                      type="date"
-                      value={newLedger.dateCreated.toISOString().split('T')[0]}
-                      onChange={(e) =>
-                        setNewLedger(prev => ({
-                          ...prev,
-                          dateCreated: new Date(e.target.value),
-                        }))
-                      }
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2"
-                    />
-                  </div> */}
-
-                  <div className="flex gap-2">
-                    <button
-                      disabled={ledgersLoading}
-                      type="submit"
-                      className="btn-primary"
-                    >
-                      {ledgersLoading ? <LoadingSpinner /> : "Save Ledger"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowLedgerForm(false)}
-                      className="btn-secondary"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </form>
+                <FormLedger
+                  handleLedgerFormChange={handleLedgerFormChange}
+                  handleLedgerSubmit={handleLedgerSubmit}
+                  setShowLedgerForm={setShowLedgerForm}
+                  ledgersLoading={ledgersLoading}
+                  newLedger={newLedger} />
               )}
 
               <div className="space-y-3">
@@ -413,6 +357,7 @@ const PageTransactions: React.FC = () => {
                   <p className="text-gray-500 mt-1">
                     {currentLedger?.description || 'Choose or create a ledger.'}
                   </p>
+                  <a target="_blank" rel="noreferrer nofollow" className="flex items-center cursor-pointer text-blue-400 hover:text-blue-500 hover:underline transition-colors text-md" href={ledgerLink}>Link to Google spreadsheet</a>
                 </div>
 
                 <button
