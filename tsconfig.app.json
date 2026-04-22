@@ -31,6 +31,6 @@
   "include": [
     "src",
     "server",
-    "api/googleDriveProxy.js"
+    "api/googleDriveHandler.js"
   ]
 }

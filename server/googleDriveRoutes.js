@@ -1,10 +1,6 @@
 import express from 'express';
-import { copyTemplateFile, createFolder, updateSpreadsheet } from '../server/googleAuth.js';
+import { copyTemplateFile, createFolder, updateSpreadsheet } from './googleAuth.js';
 import path from 'path';
-
-const app = express();
-app.use(express.json());
-
 
 const router = express.Router();
 
@@ -20,64 +16,31 @@ if (!process.env.NODE_ENV) {
 const templateId = process.env.GOOGLE_TEMPLATE_ID
 const sharedFolderId = process.env.GOOGLE_PARENT_FOLDER_ID
 
-// Add this debug endpoint (remove in production)
-router.get('/debug', async (req, res) => {
+// TODO remove /auth/google route in lieu of shared drive file storage
+// Route to initiate Google OAuth2 flow
+router.get('/auth/google', (req, res) => {
   try {
-    console.log('Debug endpoint called');
-    console.log('Environment variables:', {
-      HAS_SERVICE_ACCOUNT_KEY: !!process.env.GOOGLE_SERVICE_ACCOUNT_KEY_BASE64,
-      HAS_TEMPLATE_ID: !!process.env.GOOGLE_TEMPLATE_ID,
-      NODE_ENV: process.env.NODE_ENV,
-      VERCEL_ENV: process.env.VERCEL_ENV
+    const url = oauth2Client.generateAuthUrl({
+      access_type: 'offline',
+      scope: [
+        'https://www.googleapis.com/auth/drive',
+        'https://www.googleapis.com/auth/drive.file'
+      ],
+      prompt: 'consent'
     });
 
-    // Test service account access
-    const drive = getServiceAccountDrive();
-    console.log('Service account client created successfully');
+    console.log('Authorization URL:', url);
 
-    res.json({
-      status: 'success',
-      message: 'Debug endpoint working',
-      env: {
-        NODE_ENV: process.env.NODE_ENV,
-        VERCEL_ENV: process.env.VERCEL_ENV
-      }
-    });
+    // Redirect user to Google OAuth2 consent page
+    res.redirect(url);
   } catch (error) {
-    console.error('Debug endpoint error:', error);
+    console.error('Error generating auth URL:', error);
     res.status(500).json({
-      status: 'error',
-      message: error.message,
-      stack: error.stack
+      error: 'Failed to generate authorization URL',
+      message: error.message
     });
   }
 });
-
-// TODO remove /auth/google route in lieu of shared drive file storage
-// Route to initiate Google OAuth2 flow
-// router.get('/auth/google', (req, res) => {
-//   try {
-//     const url = oauth2Client.generateAuthUrl({
-//       access_type: 'offline',
-//       scope: [
-//         'https://www.googleapis.com/auth/drive',
-//         'https://www.googleapis.com/auth/drive.file'
-//       ],
-//       prompt: 'consent'
-//     });
-
-//     console.log('Authorization URL:', url);
-
-//     // Redirect user to Google OAuth2 consent page
-//     res.redirect(url);
-//   } catch (error) {
-//     console.error('Error generating auth URL:', error);
-//     res.status(500).json({
-//       error: 'Failed to generate authorization URL',
-//       message: error.message
-//     });
-//   }
-// });
 
 // Create folder for the user
 router.post('/folder', async (req, res) => {
@@ -203,7 +166,7 @@ router.put('/sheets/updates/', async (req, res) => {
 })
 
 // Update a cell in Google Sheet
-// router.put('/sheets/:fileId/values/:range', async (req, res) => {
+// router.put('/sheets/:fileId/values/:range', getGoogleDriveClient, async (req, res) => {
 //   try {
 //     const { fileId, range } = req.params;
 //     const { values } = req.body;
