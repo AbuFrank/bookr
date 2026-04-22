@@ -3,34 +3,37 @@ import express from 'express';
 const app = express();
 app.use(express.json());
 
-console.log('Google Drive function initialized!');
-
+// Handle all routes properly with a fallback
 app.get('/health', (req, res) => {
-  console.log('Health endpoint hit!');
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
 app.get('/debug', (req, res) => {
-  console.log('Debug endpoint hit!');
   res.json({
-    message: 'Debug working',
-    timestamp: new Date().toISOString(),
-    environment: process.env.VERCEL_ENV || process.env.NODE_ENV
+    message: 'Debug endpoint working',
+    environment: process.env.VERCEL_ENV || 'development'
   });
 });
 
 app.get('/test', (req, res) => {
-  console.log('Test endpoint hit!');
-  res.json({ message: 'Google Drive function is working!' });
+  res.json({ message: 'Test endpoint working' });
 });
 
-// Root endpoint
+// Root endpoint 
 app.get('/', (req, res) => {
-  console.log('Root endpoint hit!');
   res.json({
-    message: 'Google Drive API is ready',
-    timestamp: new Date().toISOString()
+    message: 'Google Drive API function',
+    endpoints: {
+      health: '/health',
+      debug: '/debug',
+      test: '/test'
+    }
   });
+});
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({ error: 'Endpoint not found' });
 });
 
 export default app;
