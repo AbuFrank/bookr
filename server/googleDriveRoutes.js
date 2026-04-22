@@ -71,7 +71,7 @@ router.post('/folder', async (req, res) => {
 });
 
 // Copy file from template to user's drive
-router.post('/files/copy', async (req, res) => {
+router.post('/copy-template', async (req, res) => {
   try {
     const { fileName, email, parentFolderId } = req.body;
 
@@ -99,7 +99,6 @@ router.post('/files/copy', async (req, res) => {
       templateId,
       fileName,
       email,
-      sharedFolderId,
       parentFolderId
     );
 
@@ -127,7 +126,7 @@ router.post('/files/copy', async (req, res) => {
 });
 
 // Update multiple cells in the Google Sheet
-router.put('/sheets/updates/', async (req, res) => {
+router.put('/update-sheets', async (req, res) => {
   try {
     // const { fileId } = req.params;
     const { updates } = req.body;

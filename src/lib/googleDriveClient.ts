@@ -122,7 +122,7 @@ const googleDriveAPI: GoogleDriveAPI = {
         throw new Error('Missing user email')
       }
 
-      const response = await fetch('/api/files/copy', {
+      const response = await fetch('/api/copy-template', {
         method: 'POST',
         headers: {
           // 'Authorization': `Bearer ${accessToken}`,
@@ -169,7 +169,7 @@ const googleDriveAPI: GoogleDriveAPI = {
       console.log('update sheet cells server calling...')
 
       // TODO no longer need access token due to shared folder and reader access
-      const response = await fetch(`/api/sheets/updates`, {
+      const response = await fetch(`/api/update-sheets`, {
         method: 'PUT',
         headers: {
           // 'Authorization': `Bearer ${accessToken}`,

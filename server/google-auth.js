@@ -112,7 +112,7 @@ export const createFolder = async (name, userEmail, sharedFolderId, parentId) =>
   }
 }
 
-export const copyTemplateFile = async (templateId, fileName, userEmail, sharedFolderId, parentFolderId = null) => {
+export const copyTemplateFile = async (templateId, fileName, userEmail, parentFolderId) => {
   try {
     const { drive } = getServiceAccountDrive();
     console.log('copyTemplateFile...')
