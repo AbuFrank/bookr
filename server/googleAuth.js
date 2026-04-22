@@ -11,20 +11,33 @@ let serviceAccountClient = null;
 export const getServiceAccountDrive = () => {
   if (!serviceAccountClient) {
 
+    console.log('Creating service account client...');
     let keyFile;
 
-    // Check if we're in Vercel (production) or local
+    // Check if we're in Vercel (production) environment
     if (process.env.VERCEL_ENV || process.env.NODE_ENV === 'production') {
       // Use base64 environment variable in production
-      const base64Key = process.env.GOOGLE_SERVICE_ACCOUNT_KEY_BASE64;
-      if (!base64Key) {
-        throw new Error('GOOGLE_SERVICE_ACCOUNT_KEY_BASE64 not found in environment variables');
+      if (!process.env.GOOGLE_SERVICE_ACCOUNT_KEY_BASE64) {
+        console.error('GOOGLE_SERVICE_ACCOUNT_KEY_BASE64 not found in environment variables');
+        throw new Error('GOOGLE_SERVICE_ACCOUNT_KEY_BASE64 environment variable is required in production');
       }
-      keyFile = JSON.parse(Buffer.from(base64Key, 'base64').toString('utf-8'));
+      try {
+        keyFile = JSON.parse(Buffer.from(process.env.GOOGLE_SERVICE_ACCOUNT_KEY_BASE64, 'base64').toString('utf-8'));
+        console.log('Successfully parsed service account key from base64');
+      } catch (error) {
+        console.error('Failed to parse service account key:', error);
+        throw new Error('Failed to parse service account key: ' + error.message);
+      }
     } else {
       // Use local file in development
       const keyPath = path.join(process.cwd(), 'server/cfcc-service-account-key.json');
-      keyFile = JSON.parse(fs.readFileSync(keyPath, 'utf8'));
+      try {
+        keyFile = JSON.parse(fs.readFileSync(keyPath, 'utf8'));
+        console.log('Successfully loaded service account key from local file');
+      } catch (error) {
+        console.error('Failed to load local service account key:', error);
+        throw new Error('Failed to load local service account key: ' + error.message);
+      }
     }
 
     const auth = new google.auth.GoogleAuth({
@@ -44,31 +57,6 @@ export const getServiceAccountDrive = () => {
 
   return serviceAccountClient;
 };
-
-// Middleware to get Google Drive client (user context)
-// export const getGoogleDriveClient = async (req, res, next) => {
-//   try {
-//     // Get access token from request headers
-//     const accessToken = req.headers.authorization?.replace('Bearer ', '') ||
-//       req.body.accessToken;
-
-//     if (!accessToken) {
-//       return res.status(401).json({ error: 'Access token required' });
-//     }
-
-//     const auth = new google.auth.OAuth2();
-//     auth.setCredentials({ access_token: accessToken });
-
-//     // Create drive client with user's credentials
-//     req.drive = google.drive({ version: 'v3', auth });
-//     req.spreadsheet = google.sheets({ version: 'v4', auth });
-
-//     next();
-//   } catch (error) {
-//     console.error('Error creating Google Drive client:', error);
-//     res.status(500).json({ error: 'Failed to create Google Drive client' });
-//   }
-// };
 
 export const createFolder = async (name, userEmail, sharedFolderId, parentId) => {
   try {
@@ -171,31 +159,6 @@ export const copyTemplateFile = async (templateId, fileName, userEmail, sharedFo
 
   } catch (error) {
     console.error('Error in copyTemplateFile:', error);
-    throw error;
-  }
-};
-
-// Function to get sheet information and sheet IDs
-export const getSheetInfo = async (fileId) => {
-  try {
-    const { sheets } = getServiceAccountDrive();
-
-    const response = await sheets.spreadsheets.get({
-      spreadsheetId: fileId,
-      fields: 'sheets(properties)'
-    });
-
-    const sheetsInfo = response.data.sheets.map(sheet => ({
-      sheetId: sheet.properties.sheetId,
-      title: sheet.properties.title,
-      gridProperties: sheet.properties.gridProperties
-    }));
-
-    console.log('Sheet information:', sheetsInfo);
-    return sheetsInfo;
-
-  } catch (error) {
-    console.error('Error getting sheet info:', error);
     throw error;
   }
 };

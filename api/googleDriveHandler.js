@@ -1,7 +1,5 @@
 import express from 'express';
 import { copyTemplateFile, createFolder, getServiceAccountDrive, updateSpreadsheet } from '../server/googleAuth.js';
-import path from 'path';
-
 
 console.log('=== INITIALIZING SERVERLESS FUNCTION ===');
 
@@ -23,26 +21,12 @@ app.get('/health', (req, res) => {
   res.json({
     status: 'OK',
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV
+    environment: process.env.VERCEL_ENV || process.env.NODE_ENV
   });
 });
 
-const router = express.Router();
-
-// Load environment variables
-import dotenv from 'dotenv';
-// Load environment variables - works locally and in Vercel
-console.log('NODE env? ', process.env.NODE_ENV)
-if (!process.env.NODE_ENV) {
-  // Load local .env only in development
-  dotenv.config({ path: path.join(process.cwd(), 'server/.env.local') });
-}
-
-const templateId = process.env.GOOGLE_TEMPLATE_ID
-const sharedFolderId = process.env.GOOGLE_PARENT_FOLDER_ID
-
-// Add this debug endpoint (remove in production)
-router.get('/debug', async (req, res) => {
+// Debug endpoint
+app.get('/debug', async (req, res) => {
   try {
     console.log('Debug endpoint called');
     console.log('Environment variables:', {
@@ -75,25 +59,32 @@ router.get('/debug', async (req, res) => {
 });
 
 // Create folder for the user
-router.post('/folder', async (req, res) => {
+app.post('/folder', async (req, res) => {
   try {
     const { name, parentId, userEmail } = req.body;
 
-    console.log('creating folder ...', { name, parentId, userEmail, sharedFolderId })
+    console.log('creating folder ...', { name, parentId, userEmail })
 
     if (!name) {
       return res.status(400).json({ error: 'Must provide a name' });
     }
 
-
     if (!userEmail) {
       return res.status(400).json({ error: 'Must provide user email' });
     }
 
-    const folderData = await createFolder(name, userEmail, sharedFolderId, parentId)
+    // Add explicit environment check here
+    console.log('Environment check:', {
+      VERCEL_ENV: process.env.VERCEL_ENV,
+      NODE_ENV: process.env.NODE_ENV,
+      IS_PRODUCTION: process.env.VERCEL_ENV === 'production'
+    });
+
+    const folderData = await createFolder(name, userEmail, process.env.GOOGLE_PARENT_FOLDER_ID, parentId)
     console.log('successful folder data ==> ', folderData)
     res.json(folderData);
   } catch (error) {
+    console.error('Error creating folder:', error);
     if (error?.message?.includes("Request had invalid authentication credentials.")) {
       res.status(401).json({ error: 'Invalid Token' })
     }
@@ -103,17 +94,17 @@ router.post('/folder', async (req, res) => {
 });
 
 // Copy file from template to user's drive
-router.post('/files/copy', async (req, res) => {
+app.post('/files/copy', async (req, res) => {
   try {
     const { fileName, email, parentFolderId } = req.body;
 
     console.log("API... ")
-    console.log("templateId ==> ", templateId)
+    console.log("templateId ==> ", process.env.GOOGLE_TEMPLATE_ID)
     console.log("fileName ==> ", fileName)
     console.log("email ==> ", email)
     console.log("parent folder id ===> ", parentFolderId)
 
-    if (!templateId) {
+    if (!process.env.GOOGLE_TEMPLATE_ID) {
       return res.status(400).json({ error: 'No template file found.' });
     }
 
@@ -128,16 +119,15 @@ router.post('/files/copy', async (req, res) => {
     }
 
     const result = await copyTemplateFile(
-      templateId,
+      process.env.GOOGLE_TEMPLATE_ID,
       fileName,
       email,
-      sharedFolderId,
+      process.env.GOOGLE_PARENT_FOLDER_ID,
       parentFolderId
     );
 
     console.log('copy template result ==> ', result)
     const newFileId = result.fileId
-
 
     res.json(result)
   } catch (error) {
@@ -159,9 +149,8 @@ router.post('/files/copy', async (req, res) => {
 });
 
 // Update multiple cells in the Google Sheet
-router.put('/sheets/updates/', async (req, res) => {
+app.put('/sheets/updates/', async (req, res) => {
   try {
-    // const { fileId } = req.params;
     const { updates } = req.body;
 
     if (!updates || !Array.isArray(updates)) {
@@ -169,17 +158,20 @@ router.put('/sheets/updates/', async (req, res) => {
     }
 
     // update each corresponding spreadsheet file provided by the update data
-    Promise.all(updates.map(({ fileId, ...allUpdates }) => updateSpreadsheet(fileId, allUpdates))).then(responses => {
-      const results = responses.map((result, idx) => ({
-        index: idx,
-        success: result.status === 200 ? true : false,
-        data: result.data
-
-      }))
-      console.log('response ==> ', results)
-
-      res.json(results)
-    })
+    Promise.all(updates.map(({ fileId, ...allUpdates }) => updateSpreadsheet(fileId, allUpdates)))
+      .then(responses => {
+        const results = responses.map((result, idx) => ({
+          index: idx,
+          success: result.status === 200 ? true : false,
+          data: result.data
+        }))
+        console.log('response ==> ', results)
+        res.json(results)
+      })
+      .catch(error => {
+        console.error('Error in batch updates:', error);
+        res.status(500).json({ error: 'Failed to update sheets' });
+      });
 
   } catch (error) {
     console.error('Error updating sheet:', error);
@@ -195,7 +187,6 @@ router.put('/sheets/updates/', async (req, res) => {
     }
     res.status(500).json({ error: 'Failed to update sheet' });
   }
-})
+});
 
-
-export default router;
+export default app;
