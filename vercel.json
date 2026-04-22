@@ -15,5 +15,8 @@
       "src": "/(.*)",
       "dest": "/dist/index.html"
     }
-  ]
+  ],
+  "rewrites": {
+    "/api/(.*)": "/api/google-drive.js"
+  }
 }

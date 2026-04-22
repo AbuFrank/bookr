@@ -132,8 +132,6 @@ export const copyTemplateFile = async (templateId, fileName, userEmail, sharedFo
 
 
     const newFileId = copyResponse.data.id;
-    // const newFileId = "12h8KZdEp0L26ByrbOZKfr5Y05JDIBixj_y8Mht-Gp78"
-    // const tempFolderId = "1XQcAW_EA32YWuCvGOs78QrSbFG2lz6RX"
 
     console.log('newFileId ==> ', newFileId)
 
@@ -163,19 +161,20 @@ export const copyTemplateFile = async (templateId, fileName, userEmail, sharedFo
   }
 };
 
+// add ledger back and create entries
 const cellLocations = {
   "E": { row: 4, accountName: 9, value: 11, previousTotal: 13 }, // Row 5. Columns J, L, N
-  "NE": { row: 4, accountName: 0, value: 2, previousTotal: 4 }, // Row 5. Columns A, C, E
-  "D": { row: 20, accountName: 1, value: 6 }, // Row 21, Columns B, G
-  "ND": { row: 36, accountName: 1, value: 6 }, // Row 37, Colmns B, G
-  "lastDTotal": { row: 30, col: 6 }, // Row 31, Column G
-  "lastNDTotal": { row: 44, col: 6 }, // Row 45, Column G
+  "D": { row: 5, accountName: 1, value: 6 }, // Row 6, Columns B, G
+  "ND": { row: 29, accountName: 1, value: 6 }, // Row 30, Colmns B, G
+  "NE": { row: 46, accountName: 0, value: 2, previousTotal: 4 }, // Row 47. Columns A, C, E
+  "lastDTotal": { row: 23, col: 6 }, // Row 24, Column G
+  "lastNDTotal": { row: 38, col: 6 }, // Row 39, Column G
 }
 
-const MaxE = 43;
-const MaxNE = 6;
-const MaxD = 8;
-const MaxND = 6;
+const MaxE = 52;
+const MaxNE = 7;
+const MaxD = 16;
+const MaxND = 7;
 
 export async function updateSpreadsheet(spreadsheetId, allUpdates) {
   try {
