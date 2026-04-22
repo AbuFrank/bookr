@@ -2,14 +2,14 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/googleDriveProxy.js",
+      "src": "api/googleDriveHandler.js",
       "use": "@vercel/node"
     }
   ],
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "/api/googleDriveProxy.js"
+      "dest": "/api/googleDriveHandler.js"
     }
   ]
 }
