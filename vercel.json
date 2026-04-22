@@ -18,7 +18,8 @@
   ],
   "rewrites": [
     {
-      "/api/(.*)": "/api/google-drive.js"
+      "source": "/api/(.*)",
+      "destination": "/api/google-drive.js"
     }
   ]
 }
