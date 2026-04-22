@@ -1,5 +1,5 @@
 import express from 'express';
-import { copyTemplateFile, createFolder, updateSpreadsheet } from './googleAuth.js';
+import { copyTemplateFile, createFolder, updateSpreadsheet } from './google-auth.js';
 import path from 'path';
 
 const router = express.Router();

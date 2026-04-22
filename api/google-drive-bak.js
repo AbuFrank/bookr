@@ -1,5 +1,5 @@
 import express from 'express';
-import { copyTemplateFile, createFolder, getServiceAccountDrive, updateSpreadsheet } from '../server/googleAuth.js';
+import { copyTemplateFile, createFolder, getServiceAccountDrive, updateSpreadsheet } from '../server/google-auth.js';
 
 console.log('=== INITIALIZING SERVERLESS FUNCTION ===');
 
