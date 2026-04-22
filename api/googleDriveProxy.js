@@ -1,6 +1,10 @@
 import express from 'express';
-import { copyTemplateFile, createFolder, updateSpreadsheet } from './googleAuth.js';
+import { copyTemplateFile, createFolder, updateSpreadsheet } from '../server/googleAuth.js';
 import path from 'path';
+
+const app = express();
+app.use(express.json());
+
 
 const router = express.Router();
 
@@ -15,6 +19,39 @@ if (!process.env.NODE_ENV) {
 
 const templateId = process.env.GOOGLE_TEMPLATE_ID
 const sharedFolderId = process.env.GOOGLE_PARENT_FOLDER_ID
+
+// Add this debug endpoint (remove in production)
+router.get('/debug', async (req, res) => {
+  try {
+    console.log('Debug endpoint called');
+    console.log('Environment variables:', {
+      HAS_SERVICE_ACCOUNT_KEY: !!process.env.GOOGLE_SERVICE_ACCOUNT_KEY_BASE64,
+      HAS_TEMPLATE_ID: !!process.env.GOOGLE_TEMPLATE_ID,
+      NODE_ENV: process.env.NODE_ENV,
+      VERCEL_ENV: process.env.VERCEL_ENV
+    });
+
+    // Test service account access
+    const drive = getServiceAccountDrive();
+    console.log('Service account client created successfully');
+
+    res.json({
+      status: 'success',
+      message: 'Debug endpoint working',
+      env: {
+        NODE_ENV: process.env.NODE_ENV,
+        VERCEL_ENV: process.env.VERCEL_ENV
+      }
+    });
+  } catch (error) {
+    console.error('Debug endpoint error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message,
+      stack: error.stack
+    });
+  }
+});
 
 // TODO remove /auth/google route in lieu of shared drive file storage
 // Route to initiate Google OAuth2 flow
