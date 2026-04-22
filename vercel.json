@@ -10,6 +10,10 @@
     {
       "src": "/api/(.*)",
       "dest": "/api/google-drive.js"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/dist/index.html"
     }
   ]
 }
