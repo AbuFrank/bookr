@@ -20,7 +20,7 @@ interface GoogleDriveAPI {
   // storeAccessToken: (accessToken: string) => Promise<void>;
   // clearAccessToken: () => Promise<void>;
   // refreshAccessToken: () => Promise<string>;
-  copyReportTemplate: (parentFolderId: string, fileName: string) => Promise<DriveFile>;
+  copyReportTemplate: (parentFolderId: string, fileName: string, description: string) => Promise<DriveFile>;
 }
 
 let currentUser: User | null = null
@@ -104,7 +104,7 @@ const googleDriveAPI: GoogleDriveAPI = {
     }
   },
 
-  async copyReportTemplate(parentFolderId: string, fileName: string): Promise<DriveFile> {
+  async copyReportTemplate(parentFolderId: string, fileName: string, description: string): Promise<DriveFile> {
     try {
       // const accessToken = await googleDriveAPI.getAccessToken();
       // const accessToken = await getAccessTokenWithRefresh()
@@ -131,7 +131,8 @@ const googleDriveAPI: GoogleDriveAPI = {
         body: JSON.stringify({
           fileName,
           email: currentUser?.email,
-          parentFolderId
+          parentFolderId,
+          description
         })
       });
 

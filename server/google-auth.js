@@ -112,7 +112,7 @@ export const createFolder = async (name, userEmail, sharedFolderId, parentId) =>
   }
 }
 
-export const copyTemplateFile = async (templateId, fileName, userEmail, parentFolderId) => {
+export const copyTemplateFile = async (templateId, fileName, userEmail, parentFolderId, description) => {
   try {
     const { drive } = getServiceAccountDrive();
     console.log('copyTemplateFile...')
@@ -131,7 +131,9 @@ export const copyTemplateFile = async (templateId, fileName, userEmail, parentFo
     });
 
 
+
     const newFileId = copyResponse.data.id;
+    await updateSpreadsheetMetaData(newFileId, fileName, description)
 
     console.log('newFileId ==> ', newFileId)
 
@@ -169,6 +171,8 @@ const cellLocations = {
   "NE": { row: 46, accountName: 0, value: 2, previousTotal: 4 }, // Row 47. Columns A, C, E
   "lastDTotal": { row: 23, col: 6 }, // Row 24, Column G
   "lastNDTotal": { row: 38, col: 6 }, // Row 39, Column G
+  "title": { row: 0, col: 0 },
+  "description": { row: 0, col: 8 }
 }
 
 const MaxE = 52;
@@ -337,6 +341,61 @@ export async function updateSpreadsheet(spreadsheetId, allUpdates) {
           });
         }
       };
+    })
+
+    // Execute batch update
+    const response = await sheets.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: {
+        requests,
+      },
+    });
+
+    console.log('Spreadsheet updated successfully');
+    return response;
+  } catch (error) {
+    console.error('Error updating spreadsheet:', error);
+    throw error;
+  }
+}
+
+export async function updateSpreadsheetMetaData(spreadsheetId, title, description) {
+  try {
+    const { sheets } = getServiceAccountDrive();
+    console.log('Updating sheet metaData...');
+
+    const fetchFileResponse = await sheets.spreadsheets.get({
+      spreadsheetId
+    });
+
+    const sheetId = fetchFileResponse.data.sheets[0].properties.sheetId;
+
+    const requests = [];
+
+    const metaData = { title, description }
+
+    new Array('title', 'description').forEach(meta => {
+      requests.push({
+        updateCells: {
+          range: {
+            sheetId,
+            startRowIndex: cellLocations[meta].row,
+            endRowIndex: cellLocations[meta].row + 1,
+            startColumnIndex: cellLocations[meta].col,
+            endColumnIndex: cellLocations[meta].col + 1,
+          },
+          rows: [{
+            values: [
+              {
+                userEnteredValue: {
+                  stringValue: metaData[meta].toUpperCase()
+                }
+              }
+            ]
+          }],
+          fields: 'userEnteredValue'
+        }
+      });
     })
 
     // Execute batch update

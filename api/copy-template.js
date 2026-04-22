@@ -6,7 +6,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { fileName, email, parentFolderId } = req.body;
+    const { fileName, email, parentFolderId, description } = req.body;
 
     const templateId = process.env.GOOGLE_TEMPLATE_ID
 
@@ -27,7 +27,8 @@ export default async function handler(req, res) {
       templateId,
       fileName,
       email,
-      parentFolderId
+      parentFolderId,
+      description
     );
 
     res.status(200).json(result);

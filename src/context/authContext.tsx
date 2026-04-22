@@ -244,7 +244,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setLedgersLoading(true);
     // Copy google spreadsheet from template
     try {
-      const copiedFile = await googleDriveAPI.copyReportTemplate(ledger.parentFolderId, ledger.name)
+      const copiedFile = await googleDriveAPI.copyReportTemplate(ledger.parentFolderId, ledger.name, ledger.description)
 
       console.log('copy file success!!!!!!! ==> ', copiedFile)
 

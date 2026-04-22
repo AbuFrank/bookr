@@ -73,7 +73,7 @@ router.post('/folder', async (req, res) => {
 // Copy file from template to user's drive
 router.post('/copy-template', async (req, res) => {
   try {
-    const { fileName, email, parentFolderId } = req.body;
+    const { fileName, email, parentFolderId, description } = req.body;
 
     console.log("API... ")
     console.log("templateId ==> ", templateId)
@@ -99,7 +99,8 @@ router.post('/copy-template', async (req, res) => {
       templateId,
       fileName,
       email,
-      parentFolderId
+      parentFolderId,
+      description
     );
 
     console.log('copy template result ==> ', result)
