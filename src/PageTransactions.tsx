@@ -123,7 +123,6 @@ const PageTransactions: React.FC = () => {
     if (!newLedger.name.trim()) return;
 
     if (!currentFiscalYear?.id || !currentBook) {
-      alert('No parent folder selected. Contact support. Redirecting to /books ...')
       navigate('/books')
       return
     }
