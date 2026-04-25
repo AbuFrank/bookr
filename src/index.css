@@ -3,6 +3,10 @@
 /* @tailwind components; */
 @tailwind utilities;
 
+@theme {
+  --breakpoint-xs: 415px;
+}
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',

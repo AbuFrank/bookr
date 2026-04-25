@@ -65,7 +65,7 @@ const FormLedger: React.FC<FormLedgerProps> = ({
                     />
                   </div> */}
 
-      <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row gap-2">
         <button
           disabled={ledgersLoading}
           type="submit"

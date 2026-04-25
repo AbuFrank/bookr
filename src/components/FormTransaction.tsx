@@ -82,7 +82,7 @@ const FormTransaction: React.FC<FormTransactionProps> = ({
           />
         </div>
 
-        <div className="col-span-2">
+        <div className="md:col-span-2">
           {accounts.length > 0 ? <><label className={labelClass}>Account</label>
             <select
               name="accountNumber"
@@ -99,7 +99,7 @@ const FormTransaction: React.FC<FormTransactionProps> = ({
             </select></> : <div>No Accounts Found</div>}
 
           {isAccountFormToggled && (
-            <div className="mt-3 p-4 bg-gray-100">
+            <div className="flex flex-col mt-3 p-4 bg-gray-100 gap-y-3">
 
               <label className="block text-sm font-medium text-gray-700 mb-1">Account Name</label>
               {/* Error message here */}
@@ -116,18 +116,18 @@ const FormTransaction: React.FC<FormTransactionProps> = ({
                   {errors.accountName}
                 </div>
               )}
-              <div className="mb-1">
+              <div className="mb-1 flex flex-col xs:flex-row gap-2">
                 <button
                   type="button"
                   onClick={() => handleAccountSubmit()}
-                  className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-2"
+                  className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
                 >
                   Create Account
                 </button>
                 <button
                   type="button"
                   onClick={() => setIsAccountFormToggled(false)}
-                  className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-2 ml-4"
+                  className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
                 >
                   Cancel
                 </button>
@@ -198,7 +198,7 @@ const FormTransaction: React.FC<FormTransactionProps> = ({
         )}
       </div>
 
-      <div className="flex justify-end space-x-3 pt-4">
+      <div className="flex flex-col xs:flex-row w-full xs:w-autojustify-end gap-3 pt-4">
         <button
           type="button"
           onClick={onTransactionCancel}

@@ -6,6 +6,7 @@ import { sortFoldersIntoTree } from './helpers/folders';
 import FolderTree from './components/FolderTree';
 import Header from './components/Header';
 import { reauthenticate } from './firebase/authService';
+import type { Folder } from './types/folderTypes';
 
 const PageBooks = () => {
   const [folderTree, setFolderTree] = useState<any[]>([])
@@ -21,7 +22,9 @@ const PageBooks = () => {
   const {
     user,
     folders,
-    addFolder
+    addFolder,
+    setCurrentFiscalYear,
+    setCurrentBook
   } = useAuth();
 
   // Update folder structure whenever folders change
@@ -68,7 +71,7 @@ const PageBooks = () => {
     return true;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SubmitEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
@@ -113,12 +116,18 @@ const PageBooks = () => {
       // setLoading(false)
       // return
 
-      // Create the new group folder
+      // Determine if we are creating a new group folder or using an existing one
       let groupFolder
       if (groupValue === 'create-new') {
         groupFolder = await googleDriveAPI.createFolder(groupName.trim(), parentFolder.id)
       } else {
         groupFolder = parentFolder
+        const groupYears = parentFolder.children.map((child: Folder) => child.name)
+        if (groupYears.includes(fiscalYear.trim())) {
+          setFiscalYearError('Fiscal year already exists.');
+          setLoading(false)
+          return;
+        }
       }
 
       // Create the fiscal year folder
@@ -126,7 +135,14 @@ const PageBooks = () => {
 
       addFolder(groupFolder)
       addFolder(yearFolder)
-      // Set current parent to the year folder
+
+      // Set current group and year folders and navigate to /transactions
+      setCurrentFiscalYear(yearFolder);
+      setCurrentBook(groupFolder);
+
+      // Navigate to transactions page
+      navigate('/transactions');
+
 
       // reset form
       setGroupName('')
