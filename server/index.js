@@ -18,7 +18,6 @@ app.use(express.json());
 // Import routes
 import googleDriveRoutes from './googleDriveRoutes.js';
 
-// Routes - make sure you're not accidentally adding invalid routes
 app.use('/api', googleDriveRoutes);
 
 // Serve static files from build directory (for production)

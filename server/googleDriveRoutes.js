@@ -1,5 +1,5 @@
 import express from 'express';
-import { copyTemplateFile, createFolder, updateSpreadsheet } from './google-auth.js';
+import { copySheetToTemplate, copyTemplateFile, createFolder, updateSpreadsheet } from './google-auth.js';
 import path from 'path';
 
 const router = express.Router();
@@ -14,6 +14,7 @@ if (!process.env.NODE_ENV) {
 }
 
 const templateId = process.env.GOOGLE_TEMPLATE_ID
+const sourceTemplateId = process.env.GOOGLE_SOURCE_ID
 const sharedFolderId = process.env.GOOGLE_PARENT_FOLDER_ID
 
 // TODO remove /auth/google route in lieu of shared drive file storage
@@ -126,9 +127,56 @@ router.post('/copy-template', async (req, res) => {
   }
 });
 
+// Copy a specific sheet from one template to another DO NOT DELETE
+router.get('/copy-template-sheet', async (req, res) => {
+  try {
+
+    console.log("copy-sheet-tab API... ")
+    console.log("templateId ==> ", templateId)
+    console.log('source template id ==> ', sourceTemplateId)
+
+    if (!templateId) {
+      return res.status(400).json({ error: 'No template file found.' });
+    }
+
+    if (!sourceTemplateId) {
+      return res.status(400).json({ error: 'No source template file found.' });
+    }
+
+
+    const result = await copySheetToTemplate(
+      templateId,
+      sourceTemplateId
+    );
+
+    console.log('copy template result ==> ', result)
+
+
+    res.json({ message: "copy success" })
+  } catch (error) {
+    console.error('Error copying file:', error);
+    if (error.code === 400) {
+      return res.status(400).json({ error: 'Invalid request parameters' });
+    }
+    if (error?.message?.includes("Request had invalid authentication credentials.")) {
+      res.status(401).json({ error: 'Invalid Token' })
+    }
+    if (error.code === 403) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    if (error.code === 404) {
+      return res.status(404).json({ error: 'Source file not found' });
+    }
+    res.status(500).json({ error: 'Failed to copy file' });
+  }
+});
+
 // Update multiple cells in the Google Sheet
 router.put('/update-sheets', async (req, res) => {
   try {
+
+    console.log('...googleDriveRoutes')
+    console.log('/update-sheets')
     // const { fileId } = req.params;
     const { updates } = req.body;
 
@@ -166,7 +214,7 @@ router.put('/update-sheets', async (req, res) => {
 })
 
 // Update a cell in Google Sheet
-// router.put('/sheets/:fileId/values/:range', getGoogleDriveClient, async (req, res) => {
+// router.put('/api/sheets/:fileId/values/:range', getGoogleDriveClient, async (req, res) => {
 //   try {
 //     const { fileId, range } = req.params;
 //     const { values } = req.body;
@@ -200,7 +248,7 @@ router.put('/update-sheets', async (req, res) => {
 // });
 
 // Get file metadata
-// router.get('/files/:fileId', getGoogleDriveClient, async (req, res) => {
+// router.get('/api/files/:fileId', getGoogleDriveClient, async (req, res) => {
 //   try {
 //     const { fileId } = req.params;
 
@@ -220,7 +268,7 @@ router.put('/update-sheets', async (req, res) => {
 // });
 
 // List files
-// router.get('/files', getGoogleDriveClient, async (req, res) => {
+// router.get('/api/files', getGoogleDriveClient, async (req, res) => {
 //   try {
 //     const response = await req.drive.files.list({
 //       pageSize: 10,

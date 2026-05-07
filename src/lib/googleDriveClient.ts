@@ -15,11 +15,7 @@ interface DriveFile {
 interface GoogleDriveAPI {
   setCurrentUser: (user: User | null) => void;
   updateSheetCells: (updates: Update[]) => Promise<any>;
-  // getAccessToken: () => Promise<string>;
   createFolder: (name: string, parentId: string) => Promise<Folder>;
-  // storeAccessToken: (accessToken: string) => Promise<void>;
-  // clearAccessToken: () => Promise<void>;
-  // refreshAccessToken: () => Promise<string>;
   copyReportTemplate: (parentFolderId: string, fileName: string, description: string) => Promise<DriveFile>;
 }
 
@@ -103,6 +99,24 @@ const googleDriveAPI: GoogleDriveAPI = {
       throw error;
     }
   },
+
+  // For copying a template sheet DO NOT DELETE
+  // async copyTemplateSheet(): Promise<SuccessMessage> {
+  //   try {
+  //     console.log('calling copyTemplateSheet....')
+  //     const response = await fetch('/api/copy-template-sheet', {
+  //       method: 'GET',
+  //       headers: {
+  //         // 'Authorization': `Bearer ${accessToken}`,
+  //         'Content-Type': 'application/json',
+  //       },
+  //     });
+  //     return response
+  //   } catch (error) {
+  //     console.error('Error copying template sheet:', error);
+  //     throw error;
+  //   }
+  // },
 
   async copyReportTemplate(parentFolderId: string, fileName: string, description: string): Promise<DriveFile> {
     try {

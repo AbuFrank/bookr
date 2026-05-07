@@ -413,3 +413,43 @@ export async function updateSpreadsheetMetaData(spreadsheetId, title, descriptio
     throw error;
   }
 }
+
+export async function copySheetToTemplate(templateId, sourceSpreadsheetId) {
+  try {
+    const { sheets } = getServiceAccountDrive();
+
+    console.log('Copying sheet from source spreadsheet...');
+
+    // Get the source spreadsheet to understand its structure
+    const sourceSpreadsheet = await sheets.spreadsheets.get({
+      spreadsheetId: sourceSpreadsheetId
+    });
+
+    console.log('Available sheets:', sourceSpreadsheet.data.sheets);
+
+    const sourceSheetId = sourceSpreadsheet.data.sheets[0].properties.sheetId;
+    console.log("///////////")
+    console.log("///////////")
+    console.log("///////////")
+    console.log("///////////")
+    console.log("///////////")
+    console.log('sheetData')
+    console.log("spreadsheet tab ID ==> ", sourceSheetId)
+
+    // copy the source sheet to the template
+    const copySheetResponse = await sheets.spreadsheets.sheets.copyTo({
+      spreadsheetId: sourceSpreadsheetId,
+      sheetId: sourceSheetId,
+      requestBody: {
+        destinationSpreadsheetId: templateId
+      }
+    });
+
+
+    return copySheetResponse
+
+  } catch (error) {
+    console.error('Error copying sheet to template:', error);
+    throw error;
+  }
+}
