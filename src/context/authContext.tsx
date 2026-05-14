@@ -139,43 +139,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return unsubscribe;
   }, []);
 
-  // useEffect(() => {
-  //   console.log('new current year => ', folderState.currentYear)
-  //   if (!folderState?.currentYear?.id) {
-  //     return
-  //   }
-  //   console.log('have fiscal year, book, and ledgers...')
-
-  //   // Set current ledgers based on current folder parent
-  //   // Set current ledger to most recent by default
-  //   const fiscalYearLedgers = ledgerState.ledgers.filter(ledger => ledger.parentFolderId === folderState?.currentYear?.id)
-
-  //   if (fiscalYearLedgers.length > 0) {
-  //     console.log('have ledgers')
-  //     const dateDescendingLedgers = fiscalYearLedgers.sort(
-  //       (a, b) => new Date(b.dateCreated).getTime() - new Date(a.dateCreated).getTime()
-  //     )
-  //     console.log("current ledgers ==> ", dateDescendingLedgers)
-  //     dispatchLedger({ type: LedgerActions.SET_CURRENT_LEDGERS, payload: dateDescendingLedgers })
-  //     dispatchLedger({ type: LedgerActions.SET_CURRENT_LEDGER, payload: dateDescendingLedgers[0] })
-  //   }
-
-  // }, [folderState.currentYear, ledgerState.ledgers])
-
-  // Update list of accounts based on current book
-  // useEffect(() => {
-  //   console.log('new current book accounts useEffect triggered => ', { currentBook: folderState.currentBook })
-  //   if (!folderState.currentBook?.id || !accountState.accounts.length) {
-  //     console.log('no current book or accounts')
-  //     return
-  //   }
-
-  //   // Set current accounts based on current book
-  //   const bookAccounts = accountState.accounts.filter((account: FirestoreAccount) => account.bookId === folderState.currentBook?.id)
-  //   dispatchAccount({ type: AccountActions.SET_CURRENT_ACCOUNTS, payload: bookAccounts })
-
-  // }, [folderState.currentBook, accountState.accounts])
-
   useEffect(() => {
     console.log('current Ledger ==> ', ledgerState.currentLedger)
     const currentLedgerTransactions = transactionState.transactions.filter(t => t.ledgerId === ledgerState.currentLedger?.id)
