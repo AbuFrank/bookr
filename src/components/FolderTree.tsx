@@ -14,16 +14,19 @@ const FolderTree: React.FC<FolderTreeProps> = ({ folders, className = '' }) => {
   const {
     setCurrentFiscalYear,
     setCurrentBook,
+    updateBooks,
   } = useAuth();
 
 
   const navigate = useNavigate();
 
   const handleFolderClick = (book: Folder, year: Folder) => {
-    console.log('selected folder parent ===> ', year)
+    console.log('selected folders ===> ', book, year)
     // Set the current book and fiscal year
     setCurrentFiscalYear(year);
     setCurrentBook(book);
+
+    updateBooks(book, year)
 
     // Navigate to transactions page
     navigate('/transactions');

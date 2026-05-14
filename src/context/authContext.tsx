@@ -43,6 +43,7 @@ interface AuthContextType {
   accountsLoading: boolean;
   addAccount: (acount: FirestoreAccount) => void;
   updateAccount: (updatedAccount: FirestoreAccount) => void;
+  updateBooks: (groupFolder: Folder, yearFolder: Folder) => void;
   deleteAccount: (accountId: string) => void;
   ledgers: Ledger[];
   ledgersLoading: boolean;
@@ -138,44 +139,48 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return unsubscribe;
   }, []);
 
+  // useEffect(() => {
+  //   console.log('new current year => ', folderState.currentYear)
+  //   if (!folderState?.currentYear?.id) {
+  //     return
+  //   }
+  //   console.log('have fiscal year, book, and ledgers...')
+
+  //   // Set current ledgers based on current folder parent
+  //   // Set current ledger to most recent by default
+  //   const fiscalYearLedgers = ledgerState.ledgers.filter(ledger => ledger.parentFolderId === folderState?.currentYear?.id)
+
+  //   if (fiscalYearLedgers.length > 0) {
+  //     console.log('have ledgers')
+  //     const dateDescendingLedgers = fiscalYearLedgers.sort(
+  //       (a, b) => new Date(b.dateCreated).getTime() - new Date(a.dateCreated).getTime()
+  //     )
+  //     console.log("current ledgers ==> ", dateDescendingLedgers)
+  //     dispatchLedger({ type: LedgerActions.SET_CURRENT_LEDGERS, payload: dateDescendingLedgers })
+  //     dispatchLedger({ type: LedgerActions.SET_CURRENT_LEDGER, payload: dateDescendingLedgers[0] })
+  //   }
+
+  // }, [folderState.currentYear, ledgerState.ledgers])
+
+  // Update list of accounts based on current book
+  // useEffect(() => {
+  //   console.log('new current book accounts useEffect triggered => ', { currentBook: folderState.currentBook })
+  //   if (!folderState.currentBook?.id || !accountState.accounts.length) {
+  //     console.log('no current book or accounts')
+  //     return
+  //   }
+
+  //   // Set current accounts based on current book
+  //   const bookAccounts = accountState.accounts.filter((account: FirestoreAccount) => account.bookId === folderState.currentBook?.id)
+  //   dispatchAccount({ type: AccountActions.SET_CURRENT_ACCOUNTS, payload: bookAccounts })
+
+  // }, [folderState.currentBook, accountState.accounts])
+
   useEffect(() => {
-    console.log('new current year => ', folderState.currentYear)
-    if (!folderState?.currentYear?.id || !ledgerState?.ledgers?.length) {
-      return
-    }
-    console.log('have fiscal year, book, and ledgers...')
-
-    // Set current ledgers based on current folder parent
-    // Set current ledger to most recent by default
-    const fiscalYearLedgers = ledgerState.ledgers.filter(ledger => ledger.parentFolderId === folderState?.currentYear?.id)
-    const dateDescendingLedgers = fiscalYearLedgers.sort(
-      (a, b) => new Date(b.dateCreated).getTime() - new Date(a.dateCreated).getTime()
-    )
-    console.log("current ledgers ==> ", dateDescendingLedgers)
-    dispatchLedger({ type: LedgerActions.SET_CURRENT_LEDGERS, payload: dateDescendingLedgers })
-    dispatchLedger({ type: LedgerActions.SET_CURRENT_LEDGER, payload: dateDescendingLedgers[0] })
-
-  }, [folderState.currentYear, ledgerState.ledgers])
-
-  useEffect(() => {
-    console.log('new current book accounts useEffect triggered => ', { currentBook: folderState.currentBook })
-    if (!folderState.currentBook?.id || !accountState.accounts.length) {
-      console.log('no current book or accounts')
-      return
-    }
-
-    // Set current accounts based on current book
-    const bookAccounts = accountState.accounts.filter((account: FirestoreAccount) => account.bookId === folderState.currentBook?.id)
-    dispatchAccount({ type: AccountActions.SET_CURRENT_ACCOUNTS, payload: bookAccounts })
-
-  }, [folderState.currentBook, accountState.accounts])
-
-  useEffect(() => {
-    if (ledgerState.currentLedger) {
-
-      const currentLedgerTransactions = transactionState.transactions.filter(t => t.ledgerId === ledgerState.currentLedger?.id)
-      dispatchTransaction({ type: TransactionActions.SET_CURRENT_TRANSACTIONS, payload: currentLedgerTransactions })
-    }
+    console.log('current Ledger ==> ', ledgerState.currentLedger)
+    const currentLedgerTransactions = transactionState.transactions.filter(t => t.ledgerId === ledgerState.currentLedger?.id)
+    console.log('current transactions??? ', currentLedgerTransactions.length)
+    dispatchTransaction({ type: TransactionActions.SET_CURRENT_TRANSACTIONS, payload: currentLedgerTransactions })
   }, [transactionState.transactions, ledgerState.currentLedger])
 
   const addTransaction = async (transaction: FirestoreTransaction) => {
@@ -213,6 +218,33 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     dispatchAccount({ type: AccountActions.UPDATE_ACCOUNT, payload: updatedAccount });
     setAccountsLoading(false)
   };
+
+  const updateBooks = async (groupFolder: Folder, yearFolder: Folder) => {
+    // Set current accounts based on current book
+    const bookAccounts = accountState.accounts.filter((account: FirestoreAccount) => account.bookId === groupFolder.id)
+    console.log("have bookAccounts ==> ", bookAccounts)
+    dispatchAccount({ type: AccountActions.SET_CURRENT_ACCOUNTS, payload: bookAccounts })
+
+    // Set current ledger to most recent by default
+    const fiscalYearLedgers = ledgerState.ledgers.filter(ledger => ledger.parentFolderId === yearFolder.id)
+
+    if (fiscalYearLedgers.length > 0) {
+      console.log('have ledgers')
+      const dateDescendingLedgers = fiscalYearLedgers.sort(
+        (a, b) => new Date(b.dateCreated).getTime() - new Date(a.dateCreated).getTime()
+      )
+      console.log("current ledgers ==> ", dateDescendingLedgers)
+      dispatchLedger({ type: LedgerActions.SET_CURRENT_LEDGERS, payload: dateDescendingLedgers })
+      // Set first ledger in list as current ledger
+      const currentLedger = dateDescendingLedgers[0]
+      dispatchLedger({ type: LedgerActions.SET_CURRENT_LEDGER, payload: currentLedger })
+
+    } else {
+      // reset current ledgers
+      dispatchLedger({ type: LedgerActions.SET_CURRENT_LEDGERS, payload: [] })
+      dispatchLedger({ type: LedgerActions.SET_CURRENT_LEDGER, payload: null })
+    }
+  }
 
   const deleteAccount = async (accountId: string) => {
     setAccountsLoading(true)
@@ -255,6 +287,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await createLedger(newLedger);
 
       dispatchLedger({ type: LedgerActions.ADD_LEDGER, payload: newLedger });
+      dispatchLedger({ type: LedgerActions.SET_CURRENT_LEDGERS, payload: [...ledgerState.currentLedgers, newLedger] })
       dispatchLedger({ type: LedgerActions.SET_CURRENT_LEDGER, payload: newLedger })
       setLedgersLoading(false);
     } catch (err: any) {
@@ -317,6 +350,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     accountsLoading,
     addAccount,
     updateAccount,
+    updateBooks,
     deleteAccount,
     ledgersLoading,
     currentLedger: ledgerState.currentLedger,
