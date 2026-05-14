@@ -14,8 +14,8 @@ export default async function handler(req, res) {
 
     // Process all updates
     const results = await Promise.all(
-      updates.map(({ fileId, ...allUpdates }) =>
-        updateSpreadsheet(fileId, allUpdates)
+      updates.map(({ fileId, transactions, ...allUpdates }) =>
+        updateSpreadsheet(fileId, transactions, allUpdates)
       )
     );
 

@@ -15,6 +15,7 @@ interface DriveFile {
 interface GoogleDriveAPI {
   setCurrentUser: (user: User | null) => void;
   updateSheetCells: (updates: Update[]) => Promise<any>;
+  // updateSheetCells: (transactions: FirestoreTransaction[], currentLedger: Ledger) => Promise<any>;
   createFolder: (name: string, parentId: string) => Promise<Folder>;
   copyReportTemplate: (parentFolderId: string, fileName: string, description: string) => Promise<DriveFile>;
 }
@@ -27,10 +28,8 @@ let currentUser: User | null = null
 onAuthStateChanged(auth, (user) => {
   if (user) {
     currentUser = user;
-    // Optionally refresh the token here
   } else {
     currentUser = null;
-    // currentUserToken = null;
   }
 });
 
@@ -168,17 +167,14 @@ const googleDriveAPI: GoogleDriveAPI = {
     }
   },
 
-  async updateSheetCells(updates: Update[]): Promise<void> {
-    // If we don't have a user ID or token, try to get it from context
+  // async updateSheetCells(updates: Update[]): Promise<void> {
+  async updateSheetCells(updates): Promise<void> {
     try {
-      console.log('no current userId found, fetching... ')
 
-      // const accessToken = await googleDriveAPI.getAccessToken();
 
       console.log('///////////////////')
-      // console.log('accessToken ==> ', accessToken)
+      console.log('updateSheetCells....')
       console.log('current User ==> ', currentUser?.email)
-      // console.log('spreadsheetId ==> ', spreadsheetId)
       console.log('Updates ==> ', updates)
 
       console.log('update sheet cells server calling...')

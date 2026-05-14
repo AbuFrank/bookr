@@ -1,3 +1,5 @@
+import type { FirestoreTransaction } from "./transactionTypes";
+
 type UpdateItem = {
   accountName: string;
   value: number;
@@ -5,6 +7,7 @@ type UpdateItem = {
 };
 
 export type Update = {
+  transactions: FirestoreTransaction[];
   fileId: string;
   E: UpdateItem[];
   NE: UpdateItem[];

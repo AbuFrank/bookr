@@ -180,7 +180,25 @@ const MaxNE = 7;
 const MaxD = 16;
 const MaxND = 7;
 
-export async function updateSpreadsheet(spreadsheetId, allUpdates) {
+const ledgerStartRow = 5;
+
+// Function to format the date as mm/dd/yy
+function formatDate(date) {
+  console.log('DATE!!! >>>>> ', date)
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const day = date.getDate().toString().padStart(2, '0');
+  const year = date.getFullYear().toString().slice(-2); // Get last two digits of year
+  return `${month}/${day}/${year}`;
+}
+// Function to convert Firestore timestamp to JS Date
+function convertFirestoreTimestamp(firestoreTimestamp) {
+  const { seconds } = firestoreTimestamp;
+  console.log('seconds ==> ', seconds)
+  console.log('date ==> ', new Date(seconds * 1000))
+  return new Date(seconds * 1000);
+}
+
+export async function updateSpreadsheet(spreadsheetId, transactions, allUpdates) {
   try {
     const { sheets } = getServiceAccountDrive();
     console.log('Updating sheet cells...');
@@ -191,19 +209,15 @@ export async function updateSpreadsheet(spreadsheetId, allUpdates) {
 
     console.log('Available sheets:', fetchFileResponse.data.sheets);
 
-    const sheetId = fetchFileResponse.data.sheets[0].properties.sheetId;
-    console.log("///////////")
-    console.log("///////////")
-    console.log("///////////")
-    console.log("///////////")
-    console.log("///////////")
-    console.log('sheetData')
-    console.log("spreadsheet ID ==> ", sheetId)
+    const ledgerSheetId = fetchFileResponse.data.sheets[0].properties.sheetId;
+    const summarySheetId = fetchFileResponse.data.sheets[1].properties.sheetId;
+
+    // TODO: verify user email matches email on file metadata
 
     const requests = [];
     const startRow = 4; // 0-indexed row 4
 
-    console.log("sheet id ==> ", sheetId)
+    console.log("sheet id ==> ", summarySheetId)
 
     console.log("ALL UPDATES??", allUpdates)
     const { lastDTotal, lastNDTotal, ...typeUpdates } = allUpdates
@@ -216,6 +230,85 @@ export async function updateSpreadsheet(spreadsheetId, allUpdates) {
     //   "ND": []
     // }
 
+    // Loop through transactions and add each to requests for ledgerSheetId
+    transactions.forEach((transaction, idx) => {
+      console.log('transaction ==> ', transaction)
+
+      requests.push({
+        updateCells: {
+          range: {
+            sheetId: ledgerSheetId,
+            startRowIndex: ledgerStartRow - 1,
+            endRowIndex: ledgerStartRow,
+            startColumnIndex: 0,
+            endColumnIndex: 11 // A-K
+          },
+          rows: [
+            {
+              values: [
+                {
+                  userEnteredValue: {
+                    stringValue: transaction.date ? formatDate(convertFirestoreTimestamp(transaction.date)) : ''
+                  }
+                },
+                {
+                  userEnteredValue: {
+                    stringValue: transaction.checkNo ? transaction.checkNo.toString() : ''
+                  }
+                },
+                {
+                  userEnteredValue: {
+                    stringValue: transaction.paidTo ? transaction.paidTo : ''
+                  }
+                },
+                {
+                  userEnteredValue: {
+                    stringValue: '' // Leave other cells in the merged range blank.
+                  }
+                },
+                {
+                  userEnteredValue: {
+                    stringValue: ''
+                  }
+                },
+                {
+                  userEnteredValue: {
+                    stringValue: ''
+                  }
+                },
+                {
+                  userEnteredValue: {
+                    stringValue: ''
+                  }
+                },
+                {
+                  userEnteredValue: {
+                    stringValue: ''
+                  }
+                },
+                {
+                  userEnteredValue: {
+                    stringValue: ''
+                  }
+                },
+                {
+                  userEnteredValue: {
+                    stringValue: transaction.accountNumber ? transaction.accountNumber.toString() : ''
+                  }
+                },
+                {
+                  userEnteredValue: {
+                    numberValue: transaction.value ? transaction.value : 0 //Provide a default number
+                  }
+                }
+              ]
+            }
+          ],
+          fields: 'userEnteredValue'
+        }
+      });
+    })
+
     // Add Deposits and Non-Income "Total Up To This Week"
     new Array('lastDTotal', 'lastNDTotal').forEach(lastTotal => {
       console.log("last total???? ", allUpdates[lastTotal])
@@ -225,7 +318,7 @@ export async function updateSpreadsheet(spreadsheetId, allUpdates) {
       requests.push({
         updateCells: {
           range: {
-            sheetId,
+            sheetId: summarySheetId,
             startRowIndex: rowIndex,
             endRowIndex: rowIndex + 1,
             startColumnIndex: colIndex,
@@ -276,7 +369,7 @@ export async function updateSpreadsheet(spreadsheetId, allUpdates) {
         requests.push({
           updateCells: {
             range: {
-              sheetId,
+              sheetId: summarySheetId,
               startRowIndex: rowIndex,
               endRowIndex: rowIndex + 1,
               startColumnIndex: cellLocation.accountName,
@@ -298,7 +391,7 @@ export async function updateSpreadsheet(spreadsheetId, allUpdates) {
         requests.push({
           updateCells: {
             range: {
-              sheetId,
+              sheetId: summarySheetId,
               startRowIndex: rowIndex,
               endRowIndex: rowIndex + 1,
               startColumnIndex: cellLocation.value,
@@ -321,7 +414,7 @@ export async function updateSpreadsheet(spreadsheetId, allUpdates) {
           requests.push({
             updateCells: {
               range: {
-                sheetId,
+                sheetId: summarySheetId,
                 startRowIndex: rowIndex,
                 endRowIndex: rowIndex + 1,
                 startColumnIndex: cellLocation.previousTotal,
@@ -355,7 +448,7 @@ export async function updateSpreadsheet(spreadsheetId, allUpdates) {
     return response;
   } catch (error) {
     console.error('Error updating spreadsheet:', error);
-    throw error;
+    // throw error;
   }
 }
 
@@ -368,7 +461,7 @@ export async function updateSpreadsheetMetaData(spreadsheetId, title, descriptio
       spreadsheetId
     });
 
-    const sheetId = fetchFileResponse.data.sheets[0].properties.sheetId;
+    const summarySheetId = fetchFileResponse.data.sheets[1].properties.sheetId;
 
     const requests = [];
 
@@ -378,7 +471,7 @@ export async function updateSpreadsheetMetaData(spreadsheetId, title, descriptio
       requests.push({
         updateCells: {
           range: {
-            sheetId,
+            sheetId: summarySheetId,
             startRowIndex: cellLocations[meta].row,
             endRowIndex: cellLocations[meta].row + 1,
             startColumnIndex: cellLocations[meta].col,
@@ -428,11 +521,7 @@ export async function copySheetToTemplate(templateId, sourceSpreadsheetId) {
     console.log('Available sheets:', sourceSpreadsheet.data.sheets);
 
     const sourceSheetId = sourceSpreadsheet.data.sheets[0].properties.sheetId;
-    console.log("///////////")
-    console.log("///////////")
-    console.log("///////////")
-    console.log("///////////")
-    console.log("///////////")
+    console.log("copySheetToTemplate")
     console.log('sheetData')
     console.log("spreadsheet tab ID ==> ", sourceSheetId)
 

@@ -185,7 +185,7 @@ router.put('/update-sheets', async (req, res) => {
     }
 
     // update each corresponding spreadsheet file provided by the update data
-    Promise.all(updates.map(({ fileId, ...allUpdates }) => updateSpreadsheet(fileId, allUpdates))).then(responses => {
+    Promise.all(updates.map(({ fileId, transactions, ...allUpdates }) => updateSpreadsheet(fileId, transactions, allUpdates))).then(responses => {
       const results = responses.map((result, idx) => ({
         index: idx,
         success: result.status === 200 ? true : false,

@@ -50,12 +50,11 @@ export const calculateAccountTotals = (transactions: FirestoreTransaction[], cur
   for (let i = 0; i < currentLedgers.length; i++) {
     const l = currentLedgers[i]
     console.log("currently looped ledger ==> ", l)
-    const currentLedgerUpdates: Update = { fileId: l.fileId, 'E': [], 'NE': [], 'D': [], 'ND': [], lastDTotal, lastNDTotal }
     // append running totals if not first ledger to record "total up to this week"
     // if (i > 0) { l.runningTotals = { ...runningTotals } }
     // for each ledger grab transactions and accumulate totals
-
     const currentTransactions = transactions.filter(t => t.ledgerId === l.id)
+    const currentLedgerUpdates: Update = { transactions: currentTransactions, fileId: l.fileId, 'E': [], 'NE': [], 'D': [], 'ND': [], lastDTotal, lastNDTotal }
     // const currentTotals: { [accountId: string]: { value: number, type: string } } = {};
     console.log('current transactions ==> ', currentTransactions)
     currentTransactions.forEach(t => {
@@ -79,7 +78,6 @@ export const calculateAccountTotals = (transactions: FirestoreTransaction[], cur
     Object.entries(runningTotals).forEach(([accId, accTotals]) => {
       const accName = findAccountById(accounts, accId)?.accountName || '';
 
-      // In your forEach loop:
       if (isValidKey(accTotals.type)) {
         currentLedgerUpdates[accTotals.type].push({ accountName: accName, value: accTotals.value, previousTotal: accTotals.previousTotal })
       }
