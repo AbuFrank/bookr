@@ -8,7 +8,7 @@ import type { FirestoreAccount, FormAccountData } from './types/accountTypes';
 import type { FirestoreTransaction } from './types/transactionTypes';
 import { findAccountById, generateFirestoreId } from './lib/firestore';
 import ReportTrigger from './components/ReportTrigger';
-import type { LedgerInput } from './types/ledgerTypes';
+import { type FormLedgerData, type LedgerInput } from './types/ledgerTypes';
 import { useNavigate } from 'react-router-dom';
 import { calculateTotals } from './helpers/ledger';
 import { reauthenticate } from './firebase/authService';
@@ -36,10 +36,11 @@ const PageTransactions: React.FC = () => {
 
   const [showLedgerForm, setShowLedgerForm] = useState(false);
 
-  const [newLedger, setNewLedger] = useState({
+  const [newLedger, setNewLedger] = useState<FormLedgerData>({
     name: '',
     description: '',
     dateCreated: new Date(),
+    startingBalance: '',
   });
 
   const {
@@ -54,10 +55,10 @@ const PageTransactions: React.FC = () => {
     accountsLoading,
     currentFiscalYear,
     currentBook,
-    ledgers,
     ledgersLoading,
     addLedger,
     currentLedger,
+    currentLedgers,
     setCurrentLedger,
   } = useAuth();
 
@@ -73,48 +74,39 @@ const PageTransactions: React.FC = () => {
 
 
   const sortedLedgers = useMemo(() => {
-    return [...ledgers].sort(
+    return [...currentLedgers].sort(
       (a, b) => new Date(b.dateCreated).getTime() - new Date(a.dateCreated).getTime()
     );
-  }, [ledgers]);
+  }, [currentLedgers]);
 
   const ledgerLink = useMemo(() => currentLedger ? `https://docs.google.com/spreadsheets/d/${currentLedger.fileId}` : '', [currentLedger])
 
-  const handleTransactionFormChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    const { name, value } = e.target;
-
-    if (name === 'type') {
-      setSubType(null);
+  /*
+   * New Ledger Form
+   */
+  const handleNewLedgerToggleOn = () => {
+    if (currentLedgers.length > 0) {
+      const runningBalance = currentLedgers[-1].runningBalance
     }
-
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
+  }
 
   const handleLedgerFormChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
+
+    if (name === 'startingBalance') {
+      console.log('form event is running balance....')
+      // Allow only valid number characters and prevent invalid input
+      const isNumberInput = /^-?\d*\.?\d*$/.test(value);
+      if (value !== '' && !isNumberInput) {
+        setErrors({ ...errors, startingBalance: 'Value must be a decimal number' })
+        return;
+      }
+    }
+
+    setErrors({ ...errors, startingBalance: '' })
     setNewLedger(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleAccountFormChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    const { name, value } = e.target;
-    setErrors({ ...errors, accountErrors: '' })
-    setNewAccount(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleAccountSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const { value } = e.target;
-    const selectedAccount = findAccountById(accounts, value);
-    setCurrentAccount(selectedAccount || null);
-  };
-
-  const handleDateChange = (date: Date | null) => {
-    setFormData(prev => ({ ...prev, date: date || new Date() }));
   };
 
   const handleLedgerSubmit = async (e: React.SubmitEvent) => {
@@ -127,6 +119,14 @@ const PageTransactions: React.FC = () => {
       return
     }
 
+    let startingBalance;
+    const parsedBalance = parseFloat(newLedger.startingBalance);
+    if (!isNaN(parsedBalance)) {
+      startingBalance = Number(parsedBalance.toFixed(2));
+    } else {
+      startingBalance = 0
+    }
+
     const ledgerData: LedgerInput = {
       id: generateFirestoreId('ledgers'),
       userId: user?.uid || 'unknown',
@@ -135,6 +135,8 @@ const PageTransactions: React.FC = () => {
       dateCreated: new Date(),
       parentFolderId: currentFiscalYear.id,
       runningTotals: null,
+      startingBalance,
+      runningBalance: startingBalance
     };
 
     try {
@@ -144,6 +146,7 @@ const PageTransactions: React.FC = () => {
         name: '',
         description: '',
         dateCreated: new Date(),
+        startingBalance: '',
       });
       setShowLedgerForm(false);
     } catch (error: any) {
@@ -170,11 +173,48 @@ const PageTransactions: React.FC = () => {
     }
   };
 
-  const handleTransactionSubmit = async (e: React.FormEvent) => {
+  /*
+   * Accounts
+   */
+  const handleAccountFormChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target;
+    setErrors({ ...errors, accountErrors: '' })
+    setNewAccount(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleAccountSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const { value } = e.target;
+    const selectedAccount = findAccountById(accounts, value);
+    setCurrentAccount(selectedAccount || null);
+  };
+
+  const handleDateChange = (date: Date | null) => {
+    setFormData(prev => ({ ...prev, date: date || new Date() }));
+  };
+
+  /* 
+   * Transactions
+   */
+  const handleTransactionFormChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target;
+
+    if (name === 'type') {
+      setSubType(null);
+    }
+
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleTransactionSubmit = async (e: React.SubmitEvent) => {
     e.preventDefault();
 
     // TODO add a isSynced state to the ledger when state changes (transaction and ledger info) that is remove when the update ledger button is pressed.
-    // TODO also hide button when sync is true
+    // TODO also hide button when isSynced is true
+    // TODO prevent navigating away if isSynced === false
     // TODO move type to account instead?
 
     console.log('transaction submit data ==> ',
@@ -262,8 +302,9 @@ const PageTransactions: React.FC = () => {
     totalNonDeductibleExpenses,
     totalExpenses,
     totalBalance,
-    totalBalanceExcludingNonIncomeAndNonDeductible
-  } = calculateTotals(currentTransactions)
+    totalBalanceExcludingNonIncomeAndNonDeductible,
+    totalBalanceIncludingPreviousBalance
+  } = calculateTotals(currentTransactions, currentLedger?.startingBalance || 0)
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
@@ -275,16 +316,19 @@ const PageTransactions: React.FC = () => {
             <div className="bg-white rounded-xl shadow-md p-6 h-full">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-bold text-gray-800 py-2">Ledgers</h2>
-                {!showLedgerForm && <button
-                  onClick={() => setShowLedgerForm(true)}
-                  className="bg-primary hover:bg-secondary px-3 py-2 rounded-lg transition cursor-pointer"
-                >
-                  New
-                </button>}
+                {!showLedgerForm &&
+                  <button
+                    onClick={() => setShowLedgerForm(true)}
+                    className="btn-primary px-3 py-2 rounded-lg transition cursor-pointer"
+                  >
+                    New
+                  </button>
+                }
               </div>
 
               {showLedgerForm && (
                 <FormLedger
+                  errors={errors}
                   handleLedgerFormChange={handleLedgerFormChange}
                   handleLedgerSubmit={handleLedgerSubmit}
                   setShowLedgerForm={setShowLedgerForm}
@@ -343,6 +387,7 @@ const PageTransactions: React.FC = () => {
                     balanceExcludingNonIncomeAndNonDeductible={
                       totalBalanceExcludingNonIncomeAndNonDeductible
                     }
+                    balanceIncludingPreviousBalance={totalBalanceIncludingPreviousBalance}
                   />
                 </div>
               </div>
@@ -356,10 +401,10 @@ const PageTransactions: React.FC = () => {
                   <p className="text-gray-500 mt-1">
                     {currentLedger?.description || 'Choose or create a ledger.'}
                   </p>
-                  <a target="_blank" rel="noreferrer nofollow" className="flex items-center cursor-pointer text-blue-400 hover:text-blue-500 hover:underline transition-colors text-md" href={ledgerLink}>Link to Google spreadsheet</a>
+                  {ledgerLink && <a target="_blank" rel="noreferrer nofollow" className="flex items-center cursor-pointer text-blue-400 hover:text-blue-500 hover:underline transition-colors text-md" href={ledgerLink}>Link to Google spreadsheet</a>}
                 </div>
 
-                <button
+                {currentLedger && <button
                   onClick={() => setShowTransactionForm(true)}
                   className="bg-primary hover:bg-secondary px-4 py-2 rounded-lg flex items-center transition cursor-pointer"
                 >
@@ -376,7 +421,7 @@ const PageTransactions: React.FC = () => {
                     />
                   </svg>
                   Add Transaction
-                </button>
+                </button>}
               </div>
 
               {showTransactionForm && (
@@ -405,21 +450,21 @@ const PageTransactions: React.FC = () => {
               )}
             </div>
 
-            <div className="bg-white rounded-xl shadow-md p-6">
-              <div className="mb-4">
-                <h2 className="text-xl font-bold text-gray-800">Transactions</h2>
-              </div>
-
-              <TransactionList
-                accounts={accounts}
-                transactions={currentTransactions}
-                deleteTransaction={deleteTransaction}
-                transactionsLoading={transactionsLoading}
-              />
-            </div>
           </section>
 
 
+        </div>
+        <div className="bg-white rounded-xl shadow-md p-6 mt-5">
+          <div className="mb-4">
+            <h2 className="text-xl font-bold text-gray-800">Transactions</h2>
+          </div>
+
+          <TransactionList
+            accounts={accounts}
+            transactions={currentTransactions}
+            deleteTransaction={deleteTransaction}
+            transactionsLoading={transactionsLoading}
+          />
         </div>
 
         <div className="mt-8">

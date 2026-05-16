@@ -20,8 +20,12 @@ const ReportTrigger: React.FC = () => {
       //   D: [],
       //   ND: [],
       // }
-      const updates = calculateAccountTotals(transactions, currentLedger, currentLedgers, accounts)
+      const { updates, newCurrentLedger, newCurrentLedgers } = calculateAccountTotals(transactions, currentLedger, currentLedgers, accounts)
 
+      // TODO update all current ledgers in firestore and re-set current ledger state
+      // bonus: only update firestore ledgers for current ledger and newer
+      // TODO create updateLedger function
+      // TODO Actually only keep starting total for the given year folder and use that to recalculate running total instead of having to update every ledger
       console.log('updates ==> ', updates)
       setMessage(JSON.stringify(updates, null, 2))
 

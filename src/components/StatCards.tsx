@@ -9,6 +9,7 @@ interface StatCardsProps {
   totalExpenses: number;
   balance: number;
   balanceExcludingNonIncomeAndNonDeductible: number;
+  balanceIncludingPreviousBalance: number;
 }
 
 const StatCards: React.FC<StatCardsProps> = ({
@@ -19,7 +20,8 @@ const StatCards: React.FC<StatCardsProps> = ({
   totalNonDeductibleExpenses,
   totalExpenses,
   balance,
-  balanceExcludingNonIncomeAndNonDeductible
+  balanceExcludingNonIncomeAndNonDeductible,
+  balanceIncludingPreviousBalance
 }) => {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -68,6 +70,7 @@ const StatCards: React.FC<StatCardsProps> = ({
               ${balance.toFixed(2)}
             </p>
             <p className="text-xs text-gray-500 mt-1">Excluding Non-Income/Non-Deductible: ${(balanceExcludingNonIncomeAndNonDeductible).toFixed(2)}</p>
+            <p className="text-xs text-gray-500 mt-1">Including Previous Balance: ${(balanceIncludingPreviousBalance).toFixed(2)}</p>
           </div>
         </div>
       </div>

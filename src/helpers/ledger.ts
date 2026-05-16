@@ -21,6 +21,11 @@ const getAccountType = (transaction: FirestoreTransaction) => {
 
 // totals each account within each ledger; accumulating for each consecutive ledger.
 export const calculateAccountTotals = (transactions: FirestoreTransaction[], currentLedger: Ledger, currentLedgers: Ledger[], accounts: FirestoreAccount[]) => {
+  // Track updated ledgers so that we can replace 
+  const newCurrentLedgers: Ledger[] = []
+  const newCurrentLedger: Ledger = { ...currentLedger }
+  // Track running balance in case we're updating an old ledger
+  let previousRunningBalance = 0
   const runningTotals: { [accountId: string]: { value: number, previousTotal: number, type: string } } = {};
   // Running Receipts Total
   let lastDTotal = 0;
@@ -49,6 +54,13 @@ export const calculateAccountTotals = (transactions: FirestoreTransaction[], cur
 
   for (let i = 0; i < currentLedgers.length; i++) {
     const l = currentLedgers[i]
+    if (i === 0) {
+      // Start running balance with the first ledger's starting balance
+      previousRunningBalance = l.startingBalance
+    } else {
+      // All other ledgers need to adopt the new running balance
+      l.startingBalance = previousRunningBalance
+    }
     console.log("currently looped ledger ==> ", l)
     // append running totals if not first ledger to record "total up to this week"
     // if (i > 0) { l.runningTotals = { ...runningTotals } }
@@ -73,6 +85,19 @@ export const calculateAccountTotals = (transactions: FirestoreTransaction[], cur
         : { value: t.value, type: accType, previousTotal: 0 }
     })
 
+    // calculate new running balance
+    const { totalBalanceIncludingPreviousBalance } = calculateTotals(currentTransactions, l.startingBalance)
+    // update running balance
+    previousRunningBalance = totalBalanceIncludingPreviousBalance
+    // update current ledger to new running balance
+    l.runningBalance = totalBalanceIncludingPreviousBalance
+    // also update new current ledger with new running balance
+    if (i === ledgerIndex) {
+      newCurrentLedger.runningBalance = totalBalanceIncludingPreviousBalance
+    }
+    // add updated ledger to new ledger array
+    newCurrentLedgers.push(l)
+
     // Create updateData for this ledger and transfer currentTotal to previousTotal and reset currentTotal
     // const newRunningTotals: { [accountId: string]: { value: number, previousTotal: number, type: string } } = {};
     Object.entries(runningTotals).forEach(([accId, accTotals]) => {
@@ -91,10 +116,14 @@ export const calculateAccountTotals = (transactions: FirestoreTransaction[], cur
 
   // Only return current ledger and ledgers chronologically ascending
   // If there is no current ledger, return all
-  return ledgerIndex >= 0 ? updateData.slice(ledgerIndex) : updateData
+  return {
+    updates: ledgerIndex >= 0 ? updateData.slice(ledgerIndex) : updateData,
+    newCurrentLedger,
+    newCurrentLedgers
+  }
 }
 
-export const calculateTotals = (transactions: FirestoreTransaction[]) => {
+export const calculateTotals = (transactions: FirestoreTransaction[], startingBalance: number) => {
   const totalDeposits = transactions
     .filter(t => t.type === 'deposit')
     .reduce((sum, t) => sum + t.value, 0);
@@ -121,6 +150,8 @@ export const calculateTotals = (transactions: FirestoreTransaction[]) => {
   const totalBalanceExcludingNonIncomeAndNonDeductible =
     (totalDeposits - totalNonIncomeDeposits) - (totalExpenses - totalNonDeductibleExpenses);
 
+  const totalBalanceIncludingPreviousBalance = startingBalance + totalDeposits - totalExpenses
+
   return {
     totalDeposits,
     totalNonIncomeDeposits,
@@ -129,6 +160,7 @@ export const calculateTotals = (transactions: FirestoreTransaction[]) => {
     totalExpenses,
     totalBalance,
     totalNonDeductibleExpenses,
-    totalBalanceExcludingNonIncomeAndNonDeductible
+    totalBalanceExcludingNonIncomeAndNonDeductible,
+    totalBalanceIncludingPreviousBalance
   }
 }

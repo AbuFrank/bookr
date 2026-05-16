@@ -5,10 +5,11 @@ export interface LedgerInput {
     description: string;
     dateCreated: Date;
     parentFolderId: string;
+    startingBalance: number;
+    runningBalance: number;
     runningTotals: {
         [accountName: string]: { value: number, type: string };
     } | null;
-
 }
 
 export interface Ledger extends LedgerInput {
@@ -19,6 +20,7 @@ export interface FormLedgerData {
     name: string;
     description: string;
     dateCreated: Date;
+    startingBalance: string;
 }
 
 export const LedgerActions = {
