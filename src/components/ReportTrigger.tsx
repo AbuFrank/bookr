@@ -4,12 +4,12 @@ import googleDriveAPI from '../lib/googleDriveClient';
 import { calculateAccountTotals } from '../helpers/ledger';
 
 const ReportTrigger: React.FC = () => {
-  const { accounts, user, isAuthenticated, transactions, currentLedger, currentLedgers } = useAuth();
+  const { accounts, user, isAuthenticated, transactions, currentFiscalYear, currentLedger, currentLedgers } = useAuth();
   const [isProcessing, setIsProcessing] = useState(false);
   const [message, setMessage] = useState('');
 
   const handleUpdateValues = async () => {
-    if (!isAuthenticated || !user || !transactions?.length || !currentLedger || !accounts?.length || isProcessing) return;
+    if (!isAuthenticated || !user || !transactions?.length || !currentLedger || !accounts?.length || !currentFiscalYear || isProcessing) return;
 
     try {
       // updates structure
@@ -20,7 +20,7 @@ const ReportTrigger: React.FC = () => {
       //   D: [],
       //   ND: [],
       // }
-      const { updates, newCurrentLedger, newCurrentLedgers } = calculateAccountTotals(transactions, currentLedger, currentLedgers, accounts)
+      const { updates } = calculateAccountTotals(transactions, currentLedger, currentLedgers, accounts, currentFiscalYear)
 
       // TODO update all current ledgers in firestore and re-set current ledger state
       // bonus: only update firestore ledgers for current ledger and newer

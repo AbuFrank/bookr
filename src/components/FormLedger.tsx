@@ -1,18 +1,16 @@
-import { useAuth } from '../hooks/useAuth';
 import type { FormLedgerData } from '../types/ledgerTypes';
 import LoadingSpinner from './LoadingSpinner';
 
 export interface FormLedgerProps {
   errors: { [key: string]: string };
   handleLedgerFormChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
-  handleLedgerSubmit: (e: React.SubmitEvent) => void;
+  handleLedgerSubmit: (e: React.FormEvent) => void;
   setShowLedgerForm: (show: boolean) => void;
   ledgersLoading: boolean;
   newLedger: FormLedgerData;
 }
 
 const FormLedger: React.FC<FormLedgerProps> = ({
-  errors,
   handleLedgerFormChange,
   handleLedgerSubmit,
   setShowLedgerForm,
@@ -20,7 +18,6 @@ const FormLedger: React.FC<FormLedgerProps> = ({
   newLedger,
 }) => {
 
-  const { currentLedgers } = useAuth()
 
   return (
     <form onSubmit={handleLedgerSubmit} className="mb-4 rounded-lg border border-gray-200 p-4 space-y-4">
@@ -38,7 +35,7 @@ const FormLedger: React.FC<FormLedgerProps> = ({
           required
         />
       </div>
-
+      {/* 
       <div className="relative">
         <label className="block text-sm font-medium text-gray-700 mb-1">
           Running Total as of Last Register
@@ -56,7 +53,7 @@ const FormLedger: React.FC<FormLedgerProps> = ({
         {errors.startingBalance && (
           <p className="mt-1 text-sm text-red-600">{errors.startingBalance}</p>
         )}
-      </div>
+      </div> */}
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">

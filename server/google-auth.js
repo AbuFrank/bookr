@@ -164,6 +164,7 @@ export const copyTemplateFile = async (templateId, fileName, userEmail, parentFo
 };
 
 // add ledger back and create entries
+// TODO use value - 1 to adjust for 0-indexed for convenience here
 const cellLocations = {
   "E": { row: 4, accountName: 9, value: 11, previousTotal: 13 }, // Row 5. Columns J, L, N
   "D": { row: 5, accountName: 1, value: 6 }, // Row 6, Columns B, G
@@ -171,6 +172,7 @@ const cellLocations = {
   "NE": { row: 46, accountName: 0, value: 2, previousTotal: 4 }, // Row 47. Columns A, C, E
   "lastDTotal": { row: 23, col: 6 }, // Row 24, Column G
   "lastNDTotal": { row: 38, col: 6 }, // Row 39, Column G
+  "lastTotal": { row: 4, col: 11 },
   "title": { row: 0, col: 0 },
   "description": { row: 0, col: 8 }
 }
@@ -220,7 +222,7 @@ export async function updateSpreadsheet(spreadsheetId, transactions, allUpdates)
     console.log("sheet id ==> ", summarySheetId)
 
     console.log("ALL UPDATES??", allUpdates)
-    const { lastDTotal, lastNDTotal, ...typeUpdates } = allUpdates
+    const { lastDTotal, lastNDTotal, lastTotal, ...typeUpdates } = allUpdates
 
     // example typeUpdates
     // const typeUpdates = {
@@ -229,6 +231,27 @@ export async function updateSpreadsheet(spreadsheetId, transactions, allUpdates)
     //   "D": [{ "accountName": "Dog Sit", "value": 600, "previousTotal": 2000 }, { "accountName": "Paycheck", "value": 0, "previousTotal": 3600 }, { "accountName": "Unemployment", "value": 1800, "previousTotal": 0 }],
     //   "ND": []
     // }
+    requests.push({
+      range: {
+        sheetId: ledgerSheetId,
+        startRowIndex: cellLocations.lastTotal.row - 1,
+        endRowIndex: cellLocations.lastTotal.row,
+        startColumnIndex: cellLocations.lastTotal.col - 1,
+        endColumnIndex: cellLocations.lastTotal.col
+      },
+      rows: [
+        {
+          values: [
+            {
+              userEnteredValue: {
+                numberValue: lastTotal
+              }
+            }
+          ]
+        }
+      ],
+      fields: 'userEnteredValue'
+    })
 
     // Loop through transactions and add each to requests for ledgerSheetId
     transactions.forEach((transaction, idx) => {

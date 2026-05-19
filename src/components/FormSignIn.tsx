@@ -1,6 +1,6 @@
 
 interface FormSignInProps {
-  handleSubmit: (e: React.SubmitEvent) => void;
+  handleSubmit: (e: React.FormEvent) => void;
   onError: (error: string) => void;
   setLoading: (loading: boolean) => void;
   loading: boolean;

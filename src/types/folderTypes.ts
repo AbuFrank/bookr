@@ -1,11 +1,14 @@
+// Firestore
 export interface Folder {
   id: string;
   name: string;
   userId: string;
   dateCreated: Date;
   parentId: string | null;
+  startingBalance?: number | null;
 }
 
+// Folder Tree UI
 export interface FolderNode {
   id: string;
   name: string;

@@ -18,6 +18,7 @@ const PageBooks = () => {
   const [error, setError] = useState<string | null>(null);
   const [fiscalYearError, setFiscalYearError] = useState<string | null>(null);
   const [showNewGroupInput, setShowNewGroupInput] = useState(false);
+  const [startingBalance, setStartingBalance] = useState<string>('')
   const navigate = useNavigate();
 
   const {
@@ -48,6 +49,14 @@ const PageBooks = () => {
     }
   };
 
+  const handleStartingBalanceChange = (value: string) => {
+    const isNumberInput = /^-?\d*\.?\d*$/.test(value);
+    if (value !== '' && !isNumberInput) {
+      return;
+    }
+    setStartingBalance(value)
+  }
+
   // Validate fiscal year
   const validateFiscalYear = (year: string) => {
     if (!year) {
@@ -73,7 +82,7 @@ const PageBooks = () => {
     return true;
   };
 
-  const handleSubmit = async (e: React.SubmitEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
@@ -96,6 +105,14 @@ const PageBooks = () => {
       setError('Please select or create a group');
       setLoading(false);
       return;
+    }
+
+    let parsedBalance;
+    const parsedFloat = parseFloat(startingBalance);
+    if (!isNaN(parsedFloat)) {
+      parsedBalance = Number(parsedFloat.toFixed(2));
+    } else {
+      parsedBalance = 0
     }
 
     try {
@@ -136,7 +153,7 @@ const PageBooks = () => {
       const yearFolder = await googleDriveAPI.createFolder(fiscalYear.trim(), groupFolder.id)
 
       addFolder(groupFolder)
-      addFolder(yearFolder)
+      addFolder({ ...yearFolder, startingBalance: parsedBalance })
 
       // Set current group and year folders and navigate to /transactions
       setCurrentFiscalYear(yearFolder);
@@ -144,13 +161,14 @@ const PageBooks = () => {
 
       updateBooks(groupFolder, yearFolder);
 
-      // Navigate to transactions page
-      navigate('/transactions');
-
       // reset form
       setGroupName('')
       setFiscalYear('')
       setGroupValue('')
+      setStartingBalance('')
+
+      // Navigate to transactions page
+      navigate('/transactions');
 
     } catch (error: any) {
       console.log('ERROR +++> ', error)
@@ -212,16 +230,18 @@ const PageBooks = () => {
             groupName={groupName}
             groupValue={groupValue}
             handleGroupChange={handleGroupChange}
+            handleStartingBalanceChange={handleStartingBalanceChange}
             handleSubmit={handleSubmit}
             loading={loading}
             setFiscalYear={setFiscalYear}
             setGroupName={setGroupName}
             showNewGroupInput={showNewGroupInput}
+            startingBalance={startingBalance}
           />
 
           <div className="mt-6 text-center text-sm text-gray-500">
             <p>Your folder structure will be created as:</p>
-            <p className="font-medium">Bookr App / {groupName.trim() || 'Group Name'} / {fiscalYear.trim() || 'Year'}</p>
+            <p className="font-medium">Bookr App / {groupValue.trim() || 'Group Name'} / {fiscalYear.trim() || 'Year'}</p>
           </div>
         </div>
       </div>

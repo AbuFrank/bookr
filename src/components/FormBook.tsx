@@ -6,11 +6,13 @@ export interface FormLedgerProps {
   groupName: string;
   groupValue: string;
   handleGroupChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
-  handleSubmit: (e: React.SubmitEvent) => void;
+  handleStartingBalanceChange: (e: string) => void;
+  handleSubmit: (e: React.FormEvent) => void;
   loading: boolean;
   setFiscalYear: (e: string) => void;
   setGroupName: (e: string) => void;
   showNewGroupInput: boolean;
+  startingBalance: string;
 }
 
 const FormBook: React.FC<FormLedgerProps> = ({
@@ -21,11 +23,13 @@ const FormBook: React.FC<FormLedgerProps> = ({
   groupName,
   groupValue,
   handleGroupChange,
+  handleStartingBalanceChange,
   handleSubmit,
   loading,
   setFiscalYear,
   setGroupName,
   showNewGroupInput,
+  startingBalance,
 }) => {
 
   return (
@@ -88,6 +92,25 @@ const FormBook: React.FC<FormLedgerProps> = ({
           onChange={(e) => setFiscalYear(e.target.value)}
           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
           placeholder="e.g., 2024, 2025, etc."
+          required
+        />
+        {fiscalYearError && (
+          <p className="mt-1 text-sm text-red-600">{fiscalYearError}</p>
+        )}
+      </div>
+
+      <div>
+        <label htmlFor="startingBalance" className="block text-sm font-medium text-gray-700 mb-1">
+          Starting Balance
+        </label>
+        <input
+          type="text"
+          id="startingBalance"
+          value={startingBalance}
+          onChange={(e) => handleStartingBalanceChange(e.target.value)}
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+          placeholder="0"
+          name="startingBalance"
           required
         />
         {fiscalYearError && (

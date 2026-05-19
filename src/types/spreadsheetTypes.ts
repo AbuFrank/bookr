@@ -15,6 +15,7 @@ export type Update = {
   ND: UpdateItem[];
   lastDTotal: number;
   lastNDTotal: number;
+  lastTotal: number;
 };
 
 export const isValidKey = (key: string): key is 'E' | 'NE' | 'D' | 'ND' => {

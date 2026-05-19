@@ -84,32 +84,32 @@ const PageTransactions: React.FC = () => {
   /*
    * New Ledger Form
    */
-  const handleNewLedgerToggleOn = () => {
-    if (currentLedgers.length > 0) {
-      const runningBalance = currentLedgers[-1].runningBalance
-    }
-  }
+  // const handleNewLedgerToggleOn = () => {
+  //   if (currentLedgers.length > 0) {
+  //     const runningBalance = currentLedgers[-1].runningBalance
+  //   }
+  // }
 
   const handleLedgerFormChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
 
-    if (name === 'startingBalance') {
-      console.log('form event is running balance....')
-      // Allow only valid number characters and prevent invalid input
-      const isNumberInput = /^-?\d*\.?\d*$/.test(value);
-      if (value !== '' && !isNumberInput) {
-        setErrors({ ...errors, startingBalance: 'Value must be a decimal number' })
-        return;
-      }
-    }
+    // if (name === 'startingBalance') {
+    //   console.log('form event is running balance....')
+    //   // Allow only valid number characters and prevent invalid input
+    //   const isNumberInput = /^-?\d*\.?\d*$/.test(value);
+    //   if (value !== '' && !isNumberInput) {
+    //     setErrors({ ...errors, startingBalance: 'Value must be a decimal number' })
+    //     return;
+    //   }
+    // }
 
     setErrors({ ...errors, startingBalance: '' })
     setNewLedger(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleLedgerSubmit = async (e: React.SubmitEvent) => {
+  const handleLedgerSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!newLedger.name.trim()) return;
@@ -119,13 +119,13 @@ const PageTransactions: React.FC = () => {
       return
     }
 
-    let startingBalance;
-    const parsedBalance = parseFloat(newLedger.startingBalance);
-    if (!isNaN(parsedBalance)) {
-      startingBalance = Number(parsedBalance.toFixed(2));
-    } else {
-      startingBalance = 0
-    }
+    // let startingBalance;
+    // const parsedBalance = parseFloat(newLedger.startingBalance);
+    // if (!isNaN(parsedBalance)) {
+    //   startingBalance = Number(parsedBalance.toFixed(2));
+    // } else {
+    //   startingBalance = 0
+    // }
 
     const ledgerData: LedgerInput = {
       id: generateFirestoreId('ledgers'),
@@ -134,9 +134,6 @@ const PageTransactions: React.FC = () => {
       description: newLedger.description.trim(),
       dateCreated: new Date(),
       parentFolderId: currentFiscalYear.id,
-      runningTotals: null,
-      startingBalance,
-      runningBalance: startingBalance
     };
 
     try {
@@ -209,7 +206,7 @@ const PageTransactions: React.FC = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleTransactionSubmit = async (e: React.SubmitEvent) => {
+  const handleTransactionSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // TODO add a isSynced state to the ledger when state changes (transaction and ledger info) that is remove when the update ledger button is pressed.
@@ -304,7 +301,7 @@ const PageTransactions: React.FC = () => {
     totalBalance,
     totalBalanceExcludingNonIncomeAndNonDeductible,
     totalBalanceIncludingPreviousBalance
-  } = calculateTotals(currentTransactions, currentLedger?.startingBalance || 0)
+  } = calculateTotals(currentTransactions, currentFiscalYear?.startingBalance || 0)
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
