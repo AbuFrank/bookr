@@ -22,6 +22,9 @@ export default async function handler(req, res) {
     res.status(200).json(folderData);
   } catch (error) {
     console.error('Error creating folder:', error);
+    if (error?.message?.includes("Request had invalid authentication credentials.")) {
+      return res.status(401).json({ error: 'Invalid Token' });
+    }
     res.status(500).json({ error: 'Failed to create folder' });
   }
 }

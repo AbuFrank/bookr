@@ -232,25 +232,27 @@ export async function updateSpreadsheet(spreadsheetId, transactions, allUpdates)
     //   "ND": []
     // }
     requests.push({
-      range: {
-        sheetId: ledgerSheetId,
-        startRowIndex: cellLocations.lastTotal.row - 1,
-        endRowIndex: cellLocations.lastTotal.row,
-        startColumnIndex: cellLocations.lastTotal.col - 1,
-        endColumnIndex: cellLocations.lastTotal.col
-      },
-      rows: [
-        {
-          values: [
-            {
-              userEnteredValue: {
-                numberValue: lastTotal
+      updateCells: {
+        range: {
+          sheetId: ledgerSheetId,
+          startRowIndex: cellLocations.lastTotal.row - 1,
+          endRowIndex: cellLocations.lastTotal.row,
+          startColumnIndex: cellLocations.lastTotal.col - 1,
+          endColumnIndex: cellLocations.lastTotal.col
+        },
+        rows: [
+          {
+            values: [
+              {
+                userEnteredValue: {
+                  numberValue: lastTotal
+                }
               }
-            }
-          ]
-        }
-      ],
-      fields: 'userEnteredValue'
+            ]
+          }
+        ],
+        fields: 'userEnteredValue'
+      }
     })
 
     // Loop through transactions and add each to requests for ledgerSheetId
@@ -261,8 +263,8 @@ export async function updateSpreadsheet(spreadsheetId, transactions, allUpdates)
         updateCells: {
           range: {
             sheetId: ledgerSheetId,
-            startRowIndex: ledgerStartRow - 1,
-            endRowIndex: ledgerStartRow,
+            startRowIndex: ledgerStartRow - 1 + idx,
+            endRowIndex: ledgerStartRow + idx,
             startColumnIndex: 0,
             endColumnIndex: 11 // A-K
           },

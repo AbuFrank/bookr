@@ -321,7 +321,7 @@ const PageTransactions: React.FC = () => {
     totalBalance,
     totalBalanceExcludingNonIncomeAndNonDeductible,
     totalBalanceIncludingPreviousBalance
-  } = calculateTotals(currentTransactions, currentFiscalYear?.startingBalance || 0)
+  } = calculateTotals(currentTransactions, currentFiscalYear?.startingBalance || 0, accounts)
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />

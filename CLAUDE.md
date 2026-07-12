@@ -1,0 +1,65 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project
+
+Bookr: a personal finance tracker. React/TypeScript/Vite frontend, Firebase (Auth + Firestore) for app data, and an Express server that acts as a service-account proxy to the Google Drive/Sheets APIs (each fiscal year's ledger is a copied Google Sheet template that gets kept in sync with Firestore transaction data).
+
+## Commands
+
+```bash
+npm run dev          # runs client (vite, port 3000) and server (nodemon) concurrently
+npm run dev:client    # vite only
+npm run dev:server    # nodemon server/index.js only, proxies /api -> localhost:3001
+npm run build         # tsc -b && vite build
+npm run lint          # eslint .
+npm run preview       # preview production build
+npm start             # node server/index.js (production, serves dist/ + /api)
+```
+
+There is no test suite/runner configured in this repo.
+
+### Local server setup
+
+The Express server needs `server/.env.local` (`GOOGLE_TEMPLATE_ID`, `GOOGLE_SOURCE_ID`, `GOOGLE_PARENT_FOLDER_ID`) and a `server/cfcc-service-account-key.json` Google service-account key. In production (Vercel), the key comes from `GOOGLE_SERVICE_ACCOUNT_KEY_BASE64` instead (base64-encoded JSON) — see `getServiceAccountDrive()` in `server/google-auth.js`.
+
+## Architecture
+
+### Data model / folder hierarchy
+
+Firestore-backed entities, all scoped by `userId`:
+
+- **Folder** (`types/folderTypes.ts`) — mirrors a Google Drive folder tree: `Bookr App` (root, auto-created on first login) → **book** (a named group, e.g. a business or household) → **fiscal year** (named by year, holds `startingBalance`) → ledgers live inside a fiscal year folder. `helpers/folders.ts#sortFoldersIntoTree` rebuilds this tree from the flat Firestore list for `FolderTree`/`PageBooks`.
+- **Ledger** (`types/ledgerTypes.ts`) — one per Google Sheet, created by copying a template file (`googleDriveAPI.copyReportTemplate` → `POST /api/copy-template` → `copyTemplateFile` in `server/google-auth.js`). Holds `fileId` (the Sheet's Drive file id) and `parentFolderId` (the fiscal year folder).
+- **Account** (`types/accountTypes.ts`) — a bank account/category scoped to a book (`bookId`), typed as `deposit`/`expense` with an optional `subType` of `non-deductible` (expense) or `non-income` (deposit). These four combinations map to the sheet's column groups: `E` (expense), `NE` (non-deductible expense), `D` (deposit/receipt), `ND` (non-income deposit) — see `cellLocations` in `server/google-auth.js`.
+- **Transaction** (`types/transactionTypes.ts`) — belongs to an account and a ledger (`ledgerId`).
+
+### Frontend state
+
+All app state lives in `context/authContext.tsx` (`AuthProvider`), composed from four `useReducer` stores (`reducer/{transaction,account,ledger,folder}Reducer.tsx`), each with its own Action-type enum in the matching `types/*.ts` file. On Firebase auth state change, transactions/accounts/ledgers/folders are all loaded in parallel and dispatched into their reducers. There is no other global state — components read everything through `hooks/useAuth.ts`.
+
+`updateBooks(groupFolder, yearFolder)` is the pivot when switching book/fiscal year: it filters accounts by `bookId` and ledgers by `parentFolderId`, then sets the most-recently-created ledger in that year as `currentLedger`.
+
+Pages: `PageBooks.tsx` (create/select book + fiscal year, creates the Drive folder chain) and `PageTransactions.tsx` (ledger + transaction CRUD, gated by `ProtectedRoute` requiring a `currentFiscalYear`/`currentBook`).
+
+### Google Sheets sync
+
+Firestore is the source of truth; the Sheet is a generated report kept in sync manually. `ReportTrigger` calls `helpers/ledger.ts#calculateAccountTotals`, which walks *all* ledgers in the current fiscal year in chronological order accumulating running per-account totals (`previousTotal`) and running deposit/non-income totals (`lastDTotal`/`lastNDTotal`/`lastTotal`, seeded from the fiscal year's `startingBalance`), and returns per-ledger `Update` payloads from the *current* ledger forward. Those are sent as one batch to `PUT /api/update-sheets` → `updateSpreadsheet` in `server/google-auth.js`, which writes fixed cell ranges (`cellLocations`) via `sheets.spreadsheets.batchUpdate`. Each ledger sheet has a fixed row budget per column group (`MaxE`/`MaxNE`/`MaxD`/`MaxND`) — writes beyond that are silently dropped (see TODOs in `notes.txt`/`changelog.md`).
+
+### Server vs. `api/`
+
+Google API logic (`copyTemplateFile`, `createFolder`, `updateSpreadsheet`, `getServiceAccountDrive`) lives once in `server/google-auth.js` and is used two ways:
+- `server/googleDriveRoutes.js` — Express routes mounted under `/api` for local dev (`npm run dev:server` / `npm start`).
+- `api/*.js` — standalone Vercel serverless functions that import from `../server/google-auth.js` directly, used in the Vercel deployment instead of the long-running Express server.
+
+Keep both call sites in sync when changing the shared `server/google-auth.js` functions' signatures.
+
+### Auth
+
+Firebase Google Sign-In (`firebase/authService.ts`, `firebase/firebase.ts`). The Drive/Sheets calls are *not* authenticated as the end user — a single service account (shared via `GOOGLE_PARENT_FOLDER_ID`) owns all files and grants the user's email `reader` access after creating/copying each file. `googleDriveAPI` (`lib/googleDriveClient.ts`) tracks the current Firebase user only to attach their email to API calls, not for token auth.
+
+## Known rough edges (see `notes.txt`, `changelog.md`)
+
+- `/auth/google` OAuth route in `googleDriveRoutes.js` is dead code left over from a prior per-user-token auth flow (references an undefined `oauth2Client`); the app now uses the shared service account instead.
+- Ledger/ledger-total recalculation re-walks every ledger in a fiscal year on every sync; there's no persisted running total on the ledger doc yet.

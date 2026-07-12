@@ -13,11 +13,17 @@ export default async function handler(req, res) {
     }
 
     // Process all updates
-    const results = await Promise.all(
+    const responses = await Promise.all(
       updates.map(({ fileId, transactions, ...allUpdates }) =>
         updateSpreadsheet(fileId, transactions, allUpdates)
       )
     );
+
+    const results = responses.map((result, idx) => ({
+      index: idx,
+      success: result?.status === 200,
+      data: result?.data,
+    }));
 
     res.status(200).json(results);
   } catch (error) {

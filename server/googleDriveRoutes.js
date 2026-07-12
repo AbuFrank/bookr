@@ -63,10 +63,10 @@ router.post('/folder', async (req, res) => {
     console.log('successful folder data ==> ', folderData)
     res.json(folderData);
   } catch (error) {
-    if (error?.message?.includes("Request had invalid authentication credentials.")) {
-      res.status(401).json({ error: 'Invalid Token' })
-    }
     console.error('Error creating folder:', error?.response || error);
+    if (error?.message?.includes("Request had invalid authentication credentials.")) {
+      return res.status(401).json({ error: 'Invalid Token' })
+    }
     res.status(500).json({ error: 'Failed to create folder' });
   }
 });
@@ -115,7 +115,7 @@ router.post('/copy-template', async (req, res) => {
       return res.status(400).json({ error: 'Invalid request parameters' });
     }
     if (error?.message?.includes("Request had invalid authentication credentials.")) {
-      res.status(401).json({ error: 'Invalid Token' })
+      return res.status(401).json({ error: 'Invalid Token' })
     }
     if (error.code === 403) {
       return res.status(403).json({ error: 'Access denied' });
@@ -159,7 +159,7 @@ router.get('/copy-template-sheet', async (req, res) => {
       return res.status(400).json({ error: 'Invalid request parameters' });
     }
     if (error?.message?.includes("Request had invalid authentication credentials.")) {
-      res.status(401).json({ error: 'Invalid Token' })
+      return res.status(401).json({ error: 'Invalid Token' })
     }
     if (error.code === 403) {
       return res.status(403).json({ error: 'Access denied' });
@@ -185,17 +185,18 @@ router.put('/update-sheets', async (req, res) => {
     }
 
     // update each corresponding spreadsheet file provided by the update data
-    Promise.all(updates.map(({ fileId, transactions, ...allUpdates }) => updateSpreadsheet(fileId, transactions, allUpdates))).then(responses => {
-      const results = responses.map((result, idx) => ({
-        index: idx,
-        success: result.status === 200 ? true : false,
-        data: result.data
+    const responses = await Promise.all(
+      updates.map(({ fileId, transactions, ...allUpdates }) => updateSpreadsheet(fileId, transactions, allUpdates))
+    )
 
-      }))
-      console.log('response ==> ', results)
+    const results = responses.map((result, idx) => ({
+      index: idx,
+      success: result?.status === 200,
+      data: result?.data,
+    }))
+    console.log('response ==> ', results)
 
-      res.json(results)
-    })
+    res.json(results)
 
   } catch (error) {
     console.error('Error updating sheet:', error);
@@ -209,7 +210,7 @@ router.put('/update-sheets', async (req, res) => {
     if (error.code === 404) {
       return res.status(404).json({ error: 'File not found' });
     }
-    res.status(500).json({ error: 'Failed to update sheet' });
+    res.status(500).json({ error: 'Failed to update sheets' });
   }
 })
 

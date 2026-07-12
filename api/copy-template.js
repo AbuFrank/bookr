@@ -37,6 +37,9 @@ export default async function handler(req, res) {
     if (error.code === 400) {
       return res.status(400).json({ error: 'Invalid request parameters' });
     }
+    if (error?.message?.includes("Request had invalid authentication credentials.")) {
+      return res.status(401).json({ error: 'Invalid Token' });
+    }
     if (error.code === 403) {
       return res.status(403).json({ error: 'Access denied' });
     }

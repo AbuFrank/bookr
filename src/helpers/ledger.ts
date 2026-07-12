@@ -5,20 +5,16 @@ import type { Ledger } from "../types/ledgerTypes";
 import { isValidKey, type Update } from "../types/spreadsheetTypes";
 import type { FirestoreTransaction } from "../types/transactionTypes";
 
-
-
-// const getAccountType = (transaction: FirestoreTransaction) => {
-//   switch (true) {
-//     case transaction.type === 'expense' && !transaction.subType:
-//       return "E"
-//     case transaction.type === 'expense' && transaction.subType === 'non-deductible':
-//       return "NE"
-//     case transaction.type === 'deposit' && !transaction.subType:
-//       return "D"
-//     default:
-//       return "ND"
-//   }
-// }
+/**
+ * Maps an account's type/subType (e.g. type: 'expense', subType: 'non-deductible')
+ * to its spreadsheet column group code.
+ */
+export const getAccountTypeCode = (account: FirestoreAccount): 'E' | 'NE' | 'D' | 'ND' => {
+  if (account.type === 'expense') {
+    return account.subType === 'non-deductible' ? 'NE' : 'E'
+  }
+  return account.subType === 'non-income' ? 'ND' : 'D'
+}
 
 /**
  * Finds an account by its unique account ID.
@@ -85,25 +81,23 @@ export const calculateAccountTotals = (transactions: FirestoreTransaction[], cur
     currentTransactions.forEach(t => {
       const accId = t.accountId
       const currentAccount = findAccountById(accounts, accId)
-      if (currentAccount) {
-        const accType = currentAccount.type
-        const accSubType = currentAccount.subType
-        if (accType === "D") {
-          lastDTotal = lastDTotal + t.value
-        }
-        if (accType === "ND") {
-          lastNDTotal = lastNDTotal + t.value;
-        }
+      if (!currentAccount) return
+
+      const accTypeCode = getAccountTypeCode(currentAccount)
+      if (accTypeCode === "D") {
+        lastDTotal = lastDTotal + t.value
       }
-      // const accName = findAccountById(accounts, t?.accountId)?.accountName;
-      // if (!accName) return;
+      if (accTypeCode === "ND") {
+        lastNDTotal = lastNDTotal + t.value;
+      }
+
       runningTotals[accId] = runningTotals[accId]
         ? { ...runningTotals[accId], value: (runningTotals[accId].value) + t.value }
-        : { value: t.value, type: accType, previousTotal: 0 }
+        : { value: t.value, type: accTypeCode, previousTotal: 0 }
     })
 
     // calculate new running balance
-    const { totalBalanceIncludingPreviousBalance } = calculateTotals(currentTransactions, lastTotal)
+    const { totalBalanceIncludingPreviousBalance } = calculateTotals(currentTransactions, lastTotal, accounts)
     // update running balance
     lastTotal = totalBalanceIncludingPreviousBalance
     // also update new current ledger with new running balance
@@ -136,27 +130,36 @@ export const calculateAccountTotals = (transactions: FirestoreTransaction[], cur
   }
 }
 
-export const calculateTotals = (transactions: FirestoreTransaction[], startingBalance: number) => {
+export const calculateTotals = (
+  transactions: FirestoreTransaction[],
+  startingBalance: number,
+  accounts: FirestoreAccount[]
+) => {
+  const accountFor = (t: FirestoreTransaction) => findAccountById(accounts, t.accountId);
+
   const totalDeposits = transactions
-    .filter(t => t.type === 'deposit')
+    .filter(t => accountFor(t)?.type === 'deposit')
     .reduce((sum, t) => sum + t.value, 0);
 
   const totalNonIncomeDeposits = transactions
-    .filter(t => t.type === 'deposit' && t.subType === 'non-income')
+    .filter(t => accountFor(t)?.type === 'deposit' && accountFor(t)?.subType === 'non-income')
     .reduce((sum, t) => sum + t.value, 0);
 
   const totalIncome = totalDeposits - totalNonIncomeDeposits;
 
   const totalDeductibleExpenses = transactions
-    .filter(t => t.type === 'expense' && (!t.subType || t.subType !== 'non-deductible'))
+    .filter(t => {
+      const account = accountFor(t);
+      return account?.type === 'expense' && account.subType !== 'non-deductible';
+    })
     .reduce((sum, t) => sum + t.value, 0);
 
   const totalNonDeductibleExpenses = transactions
-    .filter(t => t.type === 'expense' && t.subType === 'non-deductible')
+    .filter(t => accountFor(t)?.type === 'expense' && accountFor(t)?.subType === 'non-deductible')
     .reduce((sum, t) => sum + t.value, 0);
 
   const totalExpenses = transactions
-    .filter(t => t.type === 'expense')
+    .filter(t => accountFor(t)?.type === 'expense')
     .reduce((sum, t) => sum + t.value, 0);
 
   const totalBalance = totalDeposits - totalExpenses;
