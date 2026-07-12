@@ -18,7 +18,7 @@ export interface FormLedgerData {
     name: string;
     description: string;
     dateCreated: Date;
-    startingBalance: string;
+    // startingBalance: string;
 }
 
 export const LedgerActions = {

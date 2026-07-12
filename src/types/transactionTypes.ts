@@ -19,8 +19,8 @@ export interface FirestoreTransaction {
   accountId: string;
   ledgerId: string | null;
   value: number;
-  type: 'expense' | 'deposit';
-  subType: 'non-deductible' | 'non-income' | null
+  // type: 'expense' | 'deposit';
+  // subType: 'non-deductible' | 'non-income' | null
 }
 
 export const TransactionActions = {

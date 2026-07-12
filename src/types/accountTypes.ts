@@ -8,14 +8,20 @@ export const AccountActions = {
 }
 
 export interface FirestoreAccount {
+  accountName: string;
+  accountNumber: number;
   dateCreated: Date;
   userId: string;
   bookId: string;
   id: string;
-  accountName: string;
+  type: 'deposit' | 'expense',
+  subType: 'non-deductible' | 'non-income' | null
 }
 
 
 export interface FormAccountData {
   accountName: string;
+  accountNumber: number | null;
+  type: 'deposit' | 'expense' | null,
+  subType: 'non-deductible' | 'non-income' | null
 }

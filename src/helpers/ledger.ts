@@ -1,4 +1,4 @@
-import { findAccountById } from "../lib/firestore";
+// import { findAccountById } from "../lib/firestore";
 import type { FirestoreAccount } from "../types/accountTypes";
 import type { Folder } from "../types/folderTypes";
 import type { Ledger } from "../types/ledgerTypes";
@@ -7,18 +7,32 @@ import type { FirestoreTransaction } from "../types/transactionTypes";
 
 
 
-const getAccountType = (transaction: FirestoreTransaction) => {
-  switch (true) {
-    case transaction.type === 'expense' && !transaction.subType:
-      return "E"
-    case transaction.type === 'expense' && transaction.subType === 'non-deductible':
-      return "NE"
-    case transaction.type === 'deposit' && !transaction.subType:
-      return "D"
-    default:
-      return "ND"
-  }
-}
+// const getAccountType = (transaction: FirestoreTransaction) => {
+//   switch (true) {
+//     case transaction.type === 'expense' && !transaction.subType:
+//       return "E"
+//     case transaction.type === 'expense' && transaction.subType === 'non-deductible':
+//       return "NE"
+//     case transaction.type === 'deposit' && !transaction.subType:
+//       return "D"
+//     default:
+//       return "ND"
+//   }
+// }
+
+/**
+ * Finds an account by its unique account ID.
+ *
+ * @param accounts - The array of accounts to search.
+ * @param accountId - The unique ID of the account to find.
+ * @returns The matching account, or `undefined` if no account is found.
+ */
+export const findAccountById = (
+  accounts: FirestoreAccount[],
+  accountId: string
+): FirestoreAccount | undefined => {
+  return accounts.find((account) => account.id === accountId);
+};
 
 // totals each account within each ledger; accumulating for each consecutive ledger.
 export const calculateAccountTotals = (transactions: FirestoreTransaction[], currentLedger: Ledger, currentLedgers: Ledger[], accounts: FirestoreAccount[], currentFiscalYear: Folder) => {
@@ -70,12 +84,16 @@ export const calculateAccountTotals = (transactions: FirestoreTransaction[], cur
     console.log('current transactions ==> ', currentTransactions)
     currentTransactions.forEach(t => {
       const accId = t.accountId
-      const accType = getAccountType(t)
-      if (accType === "D") {
-        lastDTotal = lastDTotal + t.value
-      }
-      if (accType === "ND") {
-        lastNDTotal = lastNDTotal + t.value;
+      const currentAccount = findAccountById(accounts, accId)
+      if (currentAccount) {
+        const accType = currentAccount.type
+        const accSubType = currentAccount.subType
+        if (accType === "D") {
+          lastDTotal = lastDTotal + t.value
+        }
+        if (accType === "ND") {
+          lastNDTotal = lastNDTotal + t.value;
+        }
       }
       // const accName = findAccountById(accounts, t?.accountId)?.accountName;
       // if (!accName) return;

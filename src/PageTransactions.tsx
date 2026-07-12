@@ -13,6 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import { calculateTotals } from './helpers/ledger';
 import { reauthenticate } from './firebase/authService';
 import FormLedger from './components/FormLedger';
+import { PlusIcon, XIcon } from 'lucide-react';
 
 const PageTransactions: React.FC = () => {
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
@@ -28,6 +29,9 @@ const PageTransactions: React.FC = () => {
 
   const [newAccount, setNewAccount] = useState<FormAccountData>({
     accountName: '',
+    accountNumber: null,
+    type: null,
+    subType: null,
   });
 
   const [currentAccount, setCurrentAccount] = useState<FirestoreAccount | null>(null);
@@ -40,7 +44,7 @@ const PageTransactions: React.FC = () => {
     name: '',
     description: '',
     dateCreated: new Date(),
-    startingBalance: '',
+    // startingBalance: '',
   });
 
   const {
@@ -143,7 +147,7 @@ const PageTransactions: React.FC = () => {
         name: '',
         description: '',
         dateCreated: new Date(),
-        startingBalance: '',
+        // startingBalance: '',
       });
       setShowLedgerForm(false);
     } catch (error: any) {
@@ -177,7 +181,14 @@ const PageTransactions: React.FC = () => {
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
-    setErrors({ ...errors, accountErrors: '' })
+    if (accounts.some((account: FirestoreAccount) => account.accountName.trim().toLocaleLowerCase() === newAccount.accountName.trim().toLowerCase()
+      || account.accountNumber === newAccount.accountNumber)) {
+      setErrors({ ...errors, accountErrors: "Account already exists" })
+      return
+    } else {
+      setErrors({ ...errors, accountErrors: '' })
+    }
+    // TODO Ensure account number corresponds with correct type/subType. Use helper function.
     setNewAccount(prev => ({ ...prev, [name]: value }));
   };
 
@@ -222,7 +233,7 @@ const PageTransactions: React.FC = () => {
       formData.paidTo &&
       formData.value &&
       formData.date &&
-      formData.type &&
+      // formData.type &&
       currentAccount?.id &&
       currentLedger?.id
     ) {
@@ -236,14 +247,14 @@ const PageTransactions: React.FC = () => {
         paidTo: formData.paidTo,
         accountId: currentAccount.id,
         value: parseFloat(formData.value),
-        type: formData.type as 'expense' | 'deposit',
-        subType: subType ? subType : null,
+        // type: formData.type as 'expense' | 'deposit',
+        // subType: subType ? subType : null,
       };
 
       try {
         await addTransaction(transactionData);
         setFormData({
-          date: new Date(),
+          date: formData.date,
           checkNumber: '',
           paidTo: '',
           accountId: '',
@@ -259,22 +270,31 @@ const PageTransactions: React.FC = () => {
   };
 
   const handleAccountSubmit = async () => {
-    if (newAccount.accountName && currentBook?.id) {
+    // TODO change conditional explicit check and error message accordingly
+    if (newAccount.accountName && currentBook?.id && newAccount.type && newAccount.accountNumber) {
       if (accounts.some((account: FirestoreAccount) => account.accountName.trim().toLocaleLowerCase() === newAccount.accountName.trim().toLowerCase())) {
         setErrors({ ...errors, accountErrors: "Account already exists" })
         return
       }
       const accountData: FirestoreAccount = {
-        id: generateFirestoreId('accounts'),
-        bookId: currentBook?.id,
-        userId: user?.uid || 'unknown',
-        dateCreated: new Date(),
         accountName: newAccount.accountName,
+        accountNumber: newAccount.accountNumber,
+        bookId: currentBook?.id,
+        dateCreated: new Date(),
+        id: generateFirestoreId('accounts'),
+        type: newAccount.type,
+        subType: newAccount.subType,
+        userId: user?.uid || 'unknown',
       };
 
       try {
         await addAccount(accountData);
-        setNewAccount({ accountName: '' });
+        setNewAccount({
+          accountName: '',
+          accountNumber: null,
+          type: null,
+          subType: null,
+        });
         setCurrentAccount(accountData);
         setIsAccountFormToggled(false);
       } catch (error) {
@@ -389,36 +409,28 @@ const PageTransactions: React.FC = () => {
                 </div>
               </div>
             </aside>
-            <div className="bg-white rounded-xl shadow-md p-6">
+            {currentLedger && <div className="bg-white rounded-xl shadow-md p-6">
               <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-6">
                 <div>
                   <h1 className="text-2xl font-bold text-gray-800">
-                    {currentLedger ? currentLedger.name : 'Select a ledger'}
+                    {currentLedger.name}
                   </h1>
-                  <p className="text-gray-500 mt-1">
-                    {currentLedger?.description || 'Choose or create a ledger.'}
-                  </p>
+                  {currentLedger.description && <p className="text-gray-500 mt-1">
+                    {currentLedger.description}
+                  </p>}
                   {ledgerLink && <a target="_blank" rel="noreferrer nofollow" className="flex items-center cursor-pointer text-blue-400 hover:text-blue-500 hover:underline transition-colors text-md" href={ledgerLink}>Link to Google spreadsheet</a>}
                 </div>
 
-                {currentLedger && <button
-                  onClick={() => setShowTransactionForm(true)}
+                <button
+                  onClick={() => showTransactionForm ? setShowTransactionForm(false) : setShowTransactionForm(true)}
                   className="bg-primary hover:bg-secondary px-4 py-2 rounded-lg flex items-center transition cursor-pointer"
                 >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-5 w-5 mr-1"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                  Add Transaction
-                </button>}
+                  {
+                    showTransactionForm
+                      ? <><XIcon /> Close Form</>
+                      : <><PlusIcon /> Add Transaction</>
+                  }
+                </button>
               </div>
 
               {showTransactionForm && (
@@ -445,15 +457,15 @@ const PageTransactions: React.FC = () => {
                   />
                 </div>
               )}
-            </div>
+            </div>}
 
           </section>
 
 
         </div>
-        <div className="bg-white rounded-xl shadow-md p-6 mt-5">
+        {currentLedger && <div className="bg-white rounded-xl shadow-md p-6 mt-5">
           <div className="mb-4">
-            <h2 className="text-xl font-bold text-gray-800">Transactions</h2>
+            <h2 className="text-xl font-bold text-gray-800">Ledger</h2>
           </div>
 
           <TransactionList
@@ -462,7 +474,7 @@ const PageTransactions: React.FC = () => {
             deleteTransaction={deleteTransaction}
             transactionsLoading={transactionsLoading}
           />
-        </div>
+        </div>}
 
         <div className="mt-8">
           {currentLedger && <ReportTrigger />}

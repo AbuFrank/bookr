@@ -309,7 +309,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     updateTransaction,
     deleteTransaction,
     transactionsLoading,
-    accounts: accountState.accounts,
+    accounts: accountState.currentAccounts,
     accountsLoading,
     addAccount,
     updateAccount,

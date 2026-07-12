@@ -1,4 +1,3 @@
-import type { SubmitEvent } from 'react';
 import type { FirestoreAccount, FormAccountData } from '../types/accountTypes';
 import type { FormData } from '../types/transactionTypes';
 import MyDatePicker from './MyDatePicker';
@@ -10,7 +9,7 @@ const inputClass = "w-full px-3 py-2 border border-gray-300 rounded-lg focus:out
 export interface FormTransactionProps {
   errors: { [key: string]: string }
   formData: FormData,
-  onTransactionSubmit: (event: SubmitEvent) => void;
+  onTransactionSubmit: (event: React.FormEvent) => void;
   onTransactionFormChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
   onTransactionCancel: () => void;
   onDateChange: (date: Date | null) => void;
@@ -70,7 +69,7 @@ const FormTransaction: React.FC<FormTransactionProps> = ({
         </div>
 
         <div>
-          <label className={labelClass}>To Whom Paid / Memo</label>
+          <label className={labelClass}>Payment To / Deposit From</label>
           <input
             type="text"
             name="paidTo"
@@ -93,7 +92,7 @@ const FormTransaction: React.FC<FormTransactionProps> = ({
               <option value=''>Select an Account</option>
               {accounts.map((account: FirestoreAccount) => (
                 <option key={account.id} value={account.id}> {/* Use account.id as the value */}
-                  {account.accountName}
+                  {`${account.accountNumber} - ${account.accountName}`}
                 </option>
               ))}
             </select></> : <div>No Accounts Found</div>}
@@ -101,19 +100,74 @@ const FormTransaction: React.FC<FormTransactionProps> = ({
           {isAccountFormToggled && (
             <div className="flex flex-col mt-3 p-4 bg-gray-100 gap-y-3">
 
-              <label className="block text-sm font-medium text-gray-700 mb-1">Account Name</label>
-              {/* Error message here */}
-              <input
-                type="text"
-                name="accountName"
-                value={newAccount.accountName}
-                onChange={handleAccountFormChange}
-                className={inputClass}
-                placeholder="Enter Name"
-              />
-              {errors.accountName && (
-                <div className="mt-2 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md">
-                  {errors.accountName}
+              <div>
+                <label className={labelClass}>Account Name</label>
+                <input
+                  type="text"
+                  name="accountName"
+                  value={newAccount.accountName}
+                  onChange={handleAccountFormChange}
+                  className={inputClass}
+                  placeholder="Enter Name"
+                />
+                {errors.accountName && (
+                  <div className="mt-2 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md">
+                    {errors.accountName}
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className={labelClass}>Account Number</label>
+                <input
+                  type="text"
+                  name="accountNumber"
+                  value={newAccount.accountNumber ? newAccount.accountNumber.toString() : ""}
+                  onChange={handleAccountFormChange}
+                  className={inputClass}
+                  placeholder="Enter Account Number"
+                />
+                {errors.accountNumber && (
+                  <div className="mt-2 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md">
+                    {errors.accountNumber}
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className={labelClass}>Type</label>
+                <select
+                  name="type"
+                  value={newAccount.type || ""}
+                  onChange={onTransactionFormChange}
+                  className={inputClass}
+                >
+                  <option value="">Select Expense/Deposit</option>
+                  <option value="deposit">Deposit</option>
+                  <option value="expense">Expense</option>
+                </select>
+              </div>
+              {newAccount.type && (
+                <div>
+                  <label className={labelClass}>
+                    {formData.type === 'deposit' ? 'Non-Income' : 'Non-Deductible'}
+                  </label>
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      name="subType"
+                      checked={subType === (formData.type === 'deposit' ? 'non-income' : 'non-deductible')}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSubType(formData.type === 'deposit' ? 'non-income' : 'non-deductible');
+                        } else {
+                          setSubType(null);
+                        }
+                      }}
+                      className="mr-2 h-4 w-4 text-blue-600 rounded"
+                    />
+                    <span className="text-sm text-gray-600">
+                      {formData.type === 'deposit' ? 'Non-Income' : 'Non-Deductible'}
+                    </span>
+                  </div>
                 </div>
               )}
               <div className="mb-1 flex flex-col xs:flex-row gap-2">
@@ -140,7 +194,7 @@ const FormTransaction: React.FC<FormTransactionProps> = ({
             onClick={() => setIsAccountFormToggled(true)}
             className="bg-gray-200 hover:bg-gray-400 text-gray-700 font-bold py-2 px-4 rounded mt-2"
           >
-            Add New Account
+            Create New Account
           </button>}
         </div>
 
