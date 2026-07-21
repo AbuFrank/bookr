@@ -20,18 +20,27 @@ export const getAccountTypeCode = (account: FirestoreAccount): 'E' | 'NE' | 'D' 
 /**
  * Valid accountNumber ranges, matching the fixed row allotments on the
  * Account Summary sheet template (Deductible Expenses: rows for 1-51,
- * Non-Deductible Expenses: rows for 75-81). Deposit accounts aren't placed
- * on fixed rows in the sheet, so they have no range.
+ * Non-Deductible Expenses: rows for 75-81, Business Deposits: rows 6-21,
+ * Non-Income Deposits: rows 30-36). Deposits are still listed chronologically
+ * by transaction rather than grouped by account row (see calculateAccountTotals),
+ * so these ranges are enforced for bookkeeping consistency only.
  */
 export const E_ACCOUNT_NUMBER_RANGE: [number, number] = [1, 51];
 export const NE_ACCOUNT_NUMBER_RANGE: [number, number] = [75, 81];
+export const D_ACCOUNT_NUMBER_RANGE: [number, number] = [101, 116];
+export const ND_ACCOUNT_NUMBER_RANGE: [number, number] = [151, 157];
 
 export const getAccountNumberRange = (
   type: 'deposit' | 'expense' | null,
   subType: 'non-deductible' | 'non-income' | null
 ): [number, number] | null => {
-  if (type !== 'expense') return null;
-  return subType === 'non-deductible' ? NE_ACCOUNT_NUMBER_RANGE : E_ACCOUNT_NUMBER_RANGE;
+  if (type === 'expense') {
+    return subType === 'non-deductible' ? NE_ACCOUNT_NUMBER_RANGE : E_ACCOUNT_NUMBER_RANGE;
+  }
+  if (type === 'deposit') {
+    return subType === 'non-income' ? ND_ACCOUNT_NUMBER_RANGE : D_ACCOUNT_NUMBER_RANGE;
+  }
+  return null;
 };
 
 export const isAccountNumberInRange = (

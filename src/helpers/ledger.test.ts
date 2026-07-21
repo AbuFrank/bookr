@@ -76,9 +76,12 @@ describe('getAccountTypeCode', () => {
 });
 
 describe('getAccountNumberRange', () => {
-  it('returns null for deposit accounts', () => {
-    expect(getAccountNumberRange('deposit', null)).toBeNull();
-    expect(getAccountNumberRange('deposit', 'non-income')).toBeNull();
+  it('returns [101, 116] for business deposit accounts', () => {
+    expect(getAccountNumberRange('deposit', null)).toEqual([101, 116]);
+  });
+
+  it('returns [151, 157] for non-income deposit accounts', () => {
+    expect(getAccountNumberRange('deposit', 'non-income')).toEqual([151, 157]);
   });
 
   it('returns [1, 51] for deductible expense accounts', () => {
@@ -91,8 +94,18 @@ describe('getAccountNumberRange', () => {
 });
 
 describe('isAccountNumberInRange', () => {
-  it('allows any number for deposit accounts', () => {
-    expect(isAccountNumberInRange('deposit', null, 9999)).toBe(true);
+  it('enforces 101-116 for business deposit accounts', () => {
+    expect(isAccountNumberInRange('deposit', null, 101)).toBe(true);
+    expect(isAccountNumberInRange('deposit', null, 116)).toBe(true);
+    expect(isAccountNumberInRange('deposit', null, 100)).toBe(false);
+    expect(isAccountNumberInRange('deposit', null, 117)).toBe(false);
+  });
+
+  it('enforces 151-157 for non-income deposit accounts', () => {
+    expect(isAccountNumberInRange('deposit', 'non-income', 151)).toBe(true);
+    expect(isAccountNumberInRange('deposit', 'non-income', 157)).toBe(true);
+    expect(isAccountNumberInRange('deposit', 'non-income', 150)).toBe(false);
+    expect(isAccountNumberInRange('deposit', 'non-income', 158)).toBe(false);
   });
 
   it('enforces 1-51 for deductible expense accounts', () => {
