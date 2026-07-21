@@ -6,8 +6,6 @@ export interface FormData {
   memo: string,
   value: string,
   date: Date,
-  type: 'deposit' | 'expense',
-  subType?: 'non-deductible' | 'non-income'
 }
 
 export interface FirestoreTransaction {

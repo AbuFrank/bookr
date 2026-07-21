@@ -23,8 +23,6 @@ export interface FormTransactionProps {
   newAccount: FormAccountData;
   currentAccount: FirestoreAccount | null;
   setNewAccount: (newAccount: FormAccountData) => void;
-  subType: 'non-deductible' | 'non-income' | null;
-  setSubType: (subType: 'non-deductible' | 'non-income' | null) => void;
   paidToOptions: string[];
 }
 
@@ -45,8 +43,6 @@ const FormTransaction: React.FC<FormTransactionProps> = ({
   newAccount,
   setNewAccount,
   handleAccountSelect,
-  subType,
-  setSubType,
   paidToOptions,
 }) => {
 
@@ -232,44 +228,6 @@ const FormTransaction: React.FC<FormTransactionProps> = ({
             required
           />
         </div>
-
-        <div>
-          <label className={labelClass}>Type</label>
-          <select
-            name="type"
-            value={formData.type}
-            onChange={onTransactionFormChange}
-            className={inputClass}
-          >
-            <option value="deposit">Deposit</option>
-            <option value="expense">Expense</option>
-          </select>
-        </div>
-        {formData.type && (
-          <div>
-            <label className={labelClass}>
-              {formData.type === 'deposit' ? 'Non-Income' : 'Non-Deductible'}
-            </label>
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                name="subType"
-                checked={subType === (formData.type === 'deposit' ? 'non-income' : 'non-deductible')}
-                onChange={(e) => {
-                  if (e.target.checked) {
-                    setSubType(formData.type === 'deposit' ? 'non-income' : 'non-deductible');
-                  } else {
-                    setSubType(null);
-                  }
-                }}
-                className="mr-2 h-4 w-4 text-blue-600 rounded"
-              />
-              <span className="text-sm text-gray-600">
-                {formData.type === 'deposit' ? 'Non-Income' : 'Non-Deductible'}
-              </span>
-            </div>
-          </div>
-        )}
       </div>
 
       <div className="flex flex-col xs:flex-row w-full xs:w-autojustify-end gap-3 pt-4">

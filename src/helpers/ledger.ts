@@ -181,32 +181,31 @@ export const calculateTotals = (
   startingBalance: number,
   accounts: FirestoreAccount[]
 ) => {
-  const accountFor = (t: FirestoreTransaction) => findAccountById(accounts, t.accountId);
+  let totalDeposits = 0;
+  let totalNonIncomeDeposits = 0;
+  let totalDeductibleExpenses = 0;
+  let totalNonDeductibleExpenses = 0;
+  let totalExpenses = 0;
 
-  const totalDeposits = transactions
-    .filter(t => accountFor(t)?.type === 'deposit')
-    .reduce((sum, t) => sum + t.value, 0);
+  transactions.forEach(t => {
+    const account = findAccountById(accounts, t.accountId);
+    if (!account) return;
 
-  const totalNonIncomeDeposits = transactions
-    .filter(t => accountFor(t)?.type === 'deposit' && accountFor(t)?.subType === 'non-income')
-    .reduce((sum, t) => sum + t.value, 0);
+    if (account.type === 'deposit') {
+      totalDeposits += t.value;
+      if (account.subType === 'non-income') totalNonIncomeDeposits += t.value;
+      return;
+    }
+
+    totalExpenses += t.value;
+    if (account.subType === 'non-deductible') {
+      totalNonDeductibleExpenses += t.value;
+    } else {
+      totalDeductibleExpenses += t.value;
+    }
+  });
 
   const totalIncome = totalDeposits - totalNonIncomeDeposits;
-
-  const totalDeductibleExpenses = transactions
-    .filter(t => {
-      const account = accountFor(t);
-      return account?.type === 'expense' && account.subType !== 'non-deductible';
-    })
-    .reduce((sum, t) => sum + t.value, 0);
-
-  const totalNonDeductibleExpenses = transactions
-    .filter(t => accountFor(t)?.type === 'expense' && accountFor(t)?.subType === 'non-deductible')
-    .reduce((sum, t) => sum + t.value, 0);
-
-  const totalExpenses = transactions
-    .filter(t => accountFor(t)?.type === 'expense')
-    .reduce((sum, t) => sum + t.value, 0);
 
   const totalBalance = totalDeposits - totalExpenses;
   const totalBalanceExcludingNonIncomeAndNonDeductible =

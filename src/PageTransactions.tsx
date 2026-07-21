@@ -18,7 +18,6 @@ import { PencilIcon, PlusIcon, XIcon } from 'lucide-react';
 
 const PageTransactions: React.FC = () => {
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
-  const [subType, setSubType] = useState<'non-deductible' | 'non-income' | null>(null);
   const [formData, setFormData] = useState({
     checkNumber: '',
     date: new Date(),
@@ -26,7 +25,6 @@ const PageTransactions: React.FC = () => {
     memo: '',
     accountId: '',
     value: '',
-    type: 'deposit' as 'deposit' | 'expense'
   });
 
   const [newAccount, setNewAccount] = useState<FormAccountData>({
@@ -235,10 +233,6 @@ const PageTransactions: React.FC = () => {
   ) => {
     const { name, value } = e.target;
 
-    if (name === 'type') {
-      setSubType(null);
-    }
-
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
@@ -248,7 +242,6 @@ const PageTransactions: React.FC = () => {
     // TODO add a isSynced state to the ledger when state changes (transaction and ledger info) that is remove when the update ledger button is pressed.
     // TODO also hide button when isSynced is true
     // TODO prevent navigating away if isSynced === false
-    // TODO move type to account instead?
 
     console.log('transaction submit data ==> ',
       currentLedger
@@ -258,7 +251,6 @@ const PageTransactions: React.FC = () => {
       formData.paidTo &&
       formData.value &&
       formData.date &&
-      // formData.type &&
       currentAccount?.id &&
       currentLedger?.id
     ) {
@@ -273,8 +265,6 @@ const PageTransactions: React.FC = () => {
         memo: formData.memo,
         accountId: currentAccount.id,
         value: parseFloat(formData.value),
-        // type: formData.type as 'expense' | 'deposit',
-        // subType: subType ? subType : null,
       };
 
       try {
@@ -286,9 +276,7 @@ const PageTransactions: React.FC = () => {
           memo: '',
           accountId: '',
           value: '',
-          type: 'expense',
         });
-        setSubType(null);
         setCurrentAccount(null);
       } catch (error) {
         console.error('Error submitting transaction:', error);
@@ -509,8 +497,6 @@ const PageTransactions: React.FC = () => {
                     isAccountFormToggled={isAccountFormToggled}
                     newAccount={newAccount}
                     setNewAccount={setNewAccount}
-                    subType={subType}
-                    setSubType={setSubType}
                     paidToOptions={paidToOptions}
                   />
                 </div>
