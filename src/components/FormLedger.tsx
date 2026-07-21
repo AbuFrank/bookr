@@ -8,6 +8,7 @@ export interface FormLedgerProps {
   setShowLedgerForm: (show: boolean) => void;
   ledgersLoading: boolean;
   newLedger: FormLedgerData;
+  isEditing?: boolean;
 }
 
 const FormLedger: React.FC<FormLedgerProps> = ({
@@ -16,6 +17,7 @@ const FormLedger: React.FC<FormLedgerProps> = ({
   setShowLedgerForm,
   ledgersLoading,
   newLedger,
+  isEditing,
 }) => {
 
 
@@ -92,7 +94,7 @@ const FormLedger: React.FC<FormLedgerProps> = ({
           type="submit"
           className="btn-primary"
         >
-          {ledgersLoading ? <LoadingSpinner /> : "Save Ledger"}
+          {ledgersLoading ? <LoadingSpinner /> : isEditing ? "Update Ledger" : "Save Ledger"}
         </button>
         <button
           type="button"

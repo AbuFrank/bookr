@@ -22,3 +22,25 @@ export const formatFirestoreDate = (timestamp: any): string => {
 
   return '';
 };
+
+/**
+ * Converts a Firestore Timestamp-like object, Date, or date string into a
+ * millisecond epoch value for sorting/comparison purposes.
+ */
+export const toComparableTime = (timestamp: any): number => {
+  if (!timestamp) return 0;
+
+  if (timestamp.seconds !== undefined) {
+    return fromUnixTime(timestamp.seconds).getTime();
+  }
+
+  if (timestamp instanceof Date) {
+    return timestamp.getTime();
+  }
+
+  if (typeof timestamp === 'string') {
+    return new Date(timestamp).getTime();
+  }
+
+  return 0;
+};

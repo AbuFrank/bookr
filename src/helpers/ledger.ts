@@ -2,8 +2,9 @@
 import type { FirestoreAccount } from "../types/accountTypes";
 import type { Folder } from "../types/folderTypes";
 import type { Ledger } from "../types/ledgerTypes";
-import { isValidKey, type Update } from "../types/spreadsheetTypes";
+import { isValidKey, type DepositUpdateItem, type Update } from "../types/spreadsheetTypes";
 import type { FirestoreTransaction } from "../types/transactionTypes";
+import { toComparableTime } from "./date";
 
 /**
  * Maps an account's type/subType (e.g. type: 'expense', subType: 'non-deductible')
@@ -15,6 +16,36 @@ export const getAccountTypeCode = (account: FirestoreAccount): 'E' | 'NE' | 'D' 
   }
   return account.subType === 'non-income' ? 'ND' : 'D'
 }
+
+/**
+ * Valid accountNumber ranges, matching the fixed row allotments on the
+ * Account Summary sheet template (Deductible Expenses: rows for 1-51,
+ * Non-Deductible Expenses: rows for 75-81). Deposit accounts aren't placed
+ * on fixed rows in the sheet, so they have no range.
+ */
+export const E_ACCOUNT_NUMBER_RANGE: [number, number] = [1, 51];
+export const NE_ACCOUNT_NUMBER_RANGE: [number, number] = [75, 81];
+
+export const getAccountNumberRange = (
+  type: 'deposit' | 'expense' | null,
+  subType: 'non-deductible' | 'non-income' | null
+): [number, number] | null => {
+  if (type !== 'expense') return null;
+  return subType === 'non-deductible' ? NE_ACCOUNT_NUMBER_RANGE : E_ACCOUNT_NUMBER_RANGE;
+};
+
+export const isAccountNumberInRange = (
+  type: 'deposit' | 'expense' | null,
+  subType: 'non-deductible' | 'non-income' | null,
+  accountNumber: number | string | null
+): boolean => {
+  const range = getAccountNumberRange(type, subType);
+  if (!range) return true;
+  const num = Number(accountNumber);
+  if (Number.isNaN(num)) return false;
+  const [min, max] = range;
+  return num >= min && num <= max;
+};
 
 /**
  * Finds an account by its unique account ID.
@@ -76,7 +107,10 @@ export const calculateAccountTotals = (transactions: FirestoreTransaction[], cur
     // for each ledger grab transactions and accumulate totals
     const currentTransactions = transactions.filter(t => t.ledgerId === l.id)
     const currentLedgerUpdates: Update = { transactions: currentTransactions, fileId: l.fileId, 'E': [], 'NE': [], 'D': [], 'ND': [], lastDTotal, lastNDTotal, lastTotal }
-    // const currentTotals: { [accountId: string]: { value: number, type: string } } = {};
+    // Deposits/Non-Income Deposits list this ledger's own transactions chronologically,
+    // rather than grouping by account like Expenses/Non-Deductible Expenses do.
+    const depositItems: DepositUpdateItem[] = []
+    const nonIncomeDepositItems: DepositUpdateItem[] = []
     console.log('current transactions ==> ', currentTransactions)
     currentTransactions.forEach(t => {
       const accId = t.accountId
@@ -86,15 +120,22 @@ export const calculateAccountTotals = (transactions: FirestoreTransaction[], cur
       const accTypeCode = getAccountTypeCode(currentAccount)
       if (accTypeCode === "D") {
         lastDTotal = lastDTotal + t.value
+        depositItems.push({ date: t.date, description: t.paidTo, amount: t.value })
+        return
       }
       if (accTypeCode === "ND") {
         lastNDTotal = lastNDTotal + t.value;
+        nonIncomeDepositItems.push({ date: t.date, description: t.paidTo, amount: t.value })
+        return
       }
 
       runningTotals[accId] = runningTotals[accId]
         ? { ...runningTotals[accId], value: (runningTotals[accId].value) + t.value }
         : { value: t.value, type: accTypeCode, previousTotal: 0 }
     })
+
+    currentLedgerUpdates.D = depositItems.sort((a, b) => toComparableTime(a.date) - toComparableTime(b.date))
+    currentLedgerUpdates.ND = nonIncomeDepositItems.sort((a, b) => toComparableTime(a.date) - toComparableTime(b.date))
 
     // calculate new running balance
     const { totalBalanceIncludingPreviousBalance } = calculateTotals(currentTransactions, lastTotal, accounts)
@@ -110,10 +151,15 @@ export const calculateAccountTotals = (transactions: FirestoreTransaction[], cur
     // Create updateData for this ledger and transfer currentTotal to previousTotal and reset currentTotal
     // const newRunningTotals: { [accountId: string]: { value: number, previousTotal: number, type: string } } = {};
     Object.entries(runningTotals).forEach(([accId, accTotals]) => {
-      const accName = findAccountById(accounts, accId)?.accountName || '';
+      const account = findAccountById(accounts, accId);
 
-      if (isValidKey(accTotals.type)) {
-        currentLedgerUpdates[accTotals.type].push({ accountName: accName, value: accTotals.value, previousTotal: accTotals.previousTotal })
+      if ((accTotals.type === 'E' || accTotals.type === 'NE') && isValidKey(accTotals.type) && account) {
+        currentLedgerUpdates[accTotals.type].push({
+          accountName: account.accountName,
+          accountNumber: account.accountNumber,
+          value: accTotals.value,
+          previousTotal: accTotals.previousTotal,
+        })
       }
       runningTotals[accId] = { type: accTotals.type, value: 0, previousTotal: accTotals.value + accTotals.previousTotal }
     })

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatFirestoreDate } from './date';
+import { formatFirestoreDate, toComparableTime } from './date';
 
 describe('formatFirestoreDate', () => {
   it('formats a Firestore Timestamp-like object', () => {
@@ -24,5 +24,27 @@ describe('formatFirestoreDate', () => {
 
   it('returns an empty string for an unrecognized input shape', () => {
     expect(formatFirestoreDate(42)).toBe('');
+  });
+});
+
+describe('toComparableTime', () => {
+  it('sorts a Firestore Timestamp-like object before/after correctly', () => {
+    const earlier = { seconds: Math.floor(new Date(2024, 2, 1).getTime() / 1000) };
+    const later = { seconds: Math.floor(new Date(2024, 2, 8).getTime() / 1000) };
+    expect(toComparableTime(earlier)).toBeLessThan(toComparableTime(later));
+  });
+
+  it('handles a JS Date object', () => {
+    expect(toComparableTime(new Date(2024, 2, 5))).toBe(new Date(2024, 2, 5).getTime());
+  });
+
+  it('handles a date string', () => {
+    expect(toComparableTime('2024-03-05T00:00:00')).toBe(new Date('2024-03-05T00:00:00').getTime());
+  });
+
+  it('returns 0 for falsy or unrecognized input', () => {
+    expect(toComparableTime(null)).toBe(0);
+    expect(toComparableTime(undefined)).toBe(0);
+    expect(toComparableTime(42)).toBe(0);
   });
 });

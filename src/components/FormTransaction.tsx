@@ -25,6 +25,7 @@ export interface FormTransactionProps {
   setNewAccount: (newAccount: FormAccountData) => void;
   subType: 'non-deductible' | 'non-income' | null;
   setSubType: (subType: 'non-deductible' | 'non-income' | null) => void;
+  paidToOptions: string[];
 }
 
 const FormTransaction: React.FC<FormTransactionProps> = ({
@@ -42,9 +43,11 @@ const FormTransaction: React.FC<FormTransactionProps> = ({
   accountsLoading,
   currentAccount,
   newAccount,
+  setNewAccount,
   handleAccountSelect,
   subType,
   setSubType,
+  paidToOptions,
 }) => {
 
   return (
@@ -73,11 +76,29 @@ const FormTransaction: React.FC<FormTransactionProps> = ({
           <input
             type="text"
             name="paidTo"
+            list="paidToHistory"
             value={formData.paidTo}
             onChange={onTransactionFormChange}
             className={inputClass}
             placeholder="e.g., Checking Account"
             required
+          />
+          <datalist id="paidToHistory">
+            {paidToOptions.map((option) => (
+              <option key={option} value={option} />
+            ))}
+          </datalist>
+        </div>
+
+        <div className="md:col-span-2">
+          <label className={labelClass}>Memo (Optional)</label>
+          <input
+            type="text"
+            name="memo"
+            value={formData.memo}
+            onChange={onTransactionFormChange}
+            className={inputClass}
+            placeholder="Optional note"
           />
         </div>
 
@@ -137,7 +158,7 @@ const FormTransaction: React.FC<FormTransactionProps> = ({
                 <select
                   name="type"
                   value={newAccount.type || ""}
-                  onChange={onTransactionFormChange}
+                  onChange={handleAccountFormChange}
                   className={inputClass}
                 >
                   <option value="">Select Expense/Deposit</option>
@@ -148,24 +169,23 @@ const FormTransaction: React.FC<FormTransactionProps> = ({
               {newAccount.type && (
                 <div>
                   <label className={labelClass}>
-                    {formData.type === 'deposit' ? 'Non-Income' : 'Non-Deductible'}
+                    {newAccount.type === 'deposit' ? 'Non-Income' : 'Non-Deductible'}
                   </label>
                   <div className="flex items-center">
                     <input
                       type="checkbox"
                       name="subType"
-                      checked={subType === (formData.type === 'deposit' ? 'non-income' : 'non-deductible')}
+                      checked={newAccount.subType === (newAccount.type === 'deposit' ? 'non-income' : 'non-deductible')}
                       onChange={(e) => {
-                        if (e.target.checked) {
-                          setSubType(formData.type === 'deposit' ? 'non-income' : 'non-deductible');
-                        } else {
-                          setSubType(null);
-                        }
+                        const nextSubType = e.target.checked
+                          ? (newAccount.type === 'deposit' ? 'non-income' : 'non-deductible')
+                          : null;
+                        setNewAccount({ ...newAccount, subType: nextSubType });
                       }}
                       className="mr-2 h-4 w-4 text-blue-600 rounded"
                     />
                     <span className="text-sm text-gray-600">
-                      {formData.type === 'deposit' ? 'Non-Income' : 'Non-Deductible'}
+                      {newAccount.type === 'deposit' ? 'Non-Income' : 'Non-Deductible'}
                     </span>
                   </div>
                 </div>

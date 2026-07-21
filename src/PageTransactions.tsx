@@ -8,12 +8,13 @@ import type { FirestoreAccount, FormAccountData } from './types/accountTypes';
 import type { FirestoreTransaction } from './types/transactionTypes';
 import { findAccountById, generateFirestoreId } from './lib/firestore';
 import ReportTrigger from './components/ReportTrigger';
-import { type FormLedgerData, type LedgerInput } from './types/ledgerTypes';
+import { type FormLedgerData, type Ledger, type LedgerInput } from './types/ledgerTypes';
 import { useNavigate } from 'react-router-dom';
-import { calculateTotals } from './helpers/ledger';
+import { calculateTotals, getAccountNumberRange, isAccountNumberInRange } from './helpers/ledger';
+import { getDistinctPaidTo } from './helpers/transactions';
 import { reauthenticate } from './firebase/authService';
 import FormLedger from './components/FormLedger';
-import { PlusIcon, XIcon } from 'lucide-react';
+import { PencilIcon, PlusIcon, XIcon } from 'lucide-react';
 
 const PageTransactions: React.FC = () => {
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
@@ -22,6 +23,7 @@ const PageTransactions: React.FC = () => {
     checkNumber: '',
     date: new Date(),
     paidTo: '',
+    memo: '',
     accountId: '',
     value: '',
     type: 'deposit' as 'deposit' | 'expense'
@@ -39,6 +41,7 @@ const PageTransactions: React.FC = () => {
   const [isAccountFormToggled, setIsAccountFormToggled] = useState(false);
 
   const [showLedgerForm, setShowLedgerForm] = useState(false);
+  const [editingLedger, setEditingLedger] = useState<Ledger | null>(null);
 
   const [newLedger, setNewLedger] = useState<FormLedgerData>({
     name: '',
@@ -50,6 +53,7 @@ const PageTransactions: React.FC = () => {
   const {
     user,
     accounts,
+    transactions,
     currentTransactions,
     addTransaction,
     deleteTransaction,
@@ -61,10 +65,13 @@ const PageTransactions: React.FC = () => {
     currentBook,
     ledgersLoading,
     addLedger,
+    updateLedger,
     currentLedger,
     currentLedgers,
     setCurrentLedger,
   } = useAuth();
+
+  const paidToOptions = useMemo(() => getDistinctPaidTo(transactions), [transactions]);
 
   const navigate = useNavigate()
 
@@ -131,18 +138,27 @@ const PageTransactions: React.FC = () => {
     //   startingBalance = 0
     // }
 
-    const ledgerData: LedgerInput = {
-      id: generateFirestoreId('ledgers'),
-      userId: user?.uid || 'unknown',
-      name: newLedger.name.trim(),
-      description: newLedger.description.trim(),
-      dateCreated: new Date(),
-      parentFolderId: currentFiscalYear.id,
-    };
-
     try {
       // TODO create more robust error management and form requirements
-      await addLedger(ledgerData);
+      if (editingLedger) {
+        const updated: Ledger = {
+          ...editingLedger,
+          name: newLedger.name.trim(),
+          description: newLedger.description.trim(),
+        };
+        await updateLedger(updated);
+        setEditingLedger(null);
+      } else {
+        const ledgerData: LedgerInput = {
+          id: generateFirestoreId('ledgers'),
+          userId: user?.uid || 'unknown',
+          name: newLedger.name.trim(),
+          description: newLedger.description.trim(),
+          dateCreated: new Date(),
+          parentFolderId: currentFiscalYear.id,
+        };
+        await addLedger(ledgerData);
+      }
       setNewLedger({
         name: '',
         description: '',
@@ -181,15 +197,24 @@ const PageTransactions: React.FC = () => {
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
-    if (accounts.some((account: FirestoreAccount) => account.accountName.trim().toLocaleLowerCase() === newAccount.accountName.trim().toLowerCase()
-      || account.accountNumber === newAccount.accountNumber)) {
+    const nextAccount = { ...newAccount, [name]: value };
+
+    if (accounts.some((account: FirestoreAccount) => account.accountName.trim().toLocaleLowerCase() === nextAccount.accountName.trim().toLowerCase()
+      || account.accountNumber === nextAccount.accountNumber)) {
       setErrors({ ...errors, accountErrors: "Account already exists" })
       return
     } else {
       setErrors({ ...errors, accountErrors: '' })
     }
-    // TODO Ensure account number corresponds with correct type/subType. Use helper function.
-    setNewAccount(prev => ({ ...prev, [name]: value }));
+
+    if (nextAccount.type && nextAccount.accountNumber && !isAccountNumberInRange(nextAccount.type, nextAccount.subType, nextAccount.accountNumber)) {
+      const [min, max] = getAccountNumberRange(nextAccount.type, nextAccount.subType) || [0, 0];
+      setErrors({ ...errors, accountNumber: `Account number must be between ${min} and ${max} for this account type` })
+    } else {
+      setErrors({ ...errors, accountNumber: '' })
+    }
+
+    setNewAccount(nextAccount);
   };
 
   const handleAccountSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -245,6 +270,7 @@ const PageTransactions: React.FC = () => {
         dateCreated: new Date(),
         ledgerId: currentLedger.id,
         paidTo: formData.paidTo,
+        memo: formData.memo,
         accountId: currentAccount.id,
         value: parseFloat(formData.value),
         // type: formData.type as 'expense' | 'deposit',
@@ -257,6 +283,7 @@ const PageTransactions: React.FC = () => {
           date: formData.date,
           checkNumber: '',
           paidTo: '',
+          memo: '',
           accountId: '',
           value: '',
           type: 'expense',
@@ -274,6 +301,11 @@ const PageTransactions: React.FC = () => {
     if (newAccount.accountName && currentBook?.id && newAccount.type && newAccount.accountNumber) {
       if (accounts.some((account: FirestoreAccount) => account.accountName.trim().toLocaleLowerCase() === newAccount.accountName.trim().toLowerCase())) {
         setErrors({ ...errors, accountErrors: "Account already exists" })
+        return
+      }
+      if (!isAccountNumberInRange(newAccount.type, newAccount.subType, newAccount.accountNumber)) {
+        const [min, max] = getAccountNumberRange(newAccount.type, newAccount.subType) || [0, 0];
+        setErrors({ ...errors, accountNumber: `Account number must be between ${min} and ${max} for this account type` })
         return
       }
       const accountData: FirestoreAccount = {
@@ -335,7 +367,11 @@ const PageTransactions: React.FC = () => {
                 <h2 className="text-xl font-bold text-gray-800 py-2">Ledgers</h2>
                 {!showLedgerForm &&
                   <button
-                    onClick={() => setShowLedgerForm(true)}
+                    onClick={() => {
+                      setEditingLedger(null);
+                      setNewLedger({ name: '', description: '', dateCreated: new Date() });
+                      setShowLedgerForm(true);
+                    }}
                     className="btn-primary px-3 py-2 rounded-lg transition cursor-pointer"
                   >
                     New
@@ -348,9 +384,13 @@ const PageTransactions: React.FC = () => {
                   errors={errors}
                   handleLedgerFormChange={handleLedgerFormChange}
                   handleLedgerSubmit={handleLedgerSubmit}
-                  setShowLedgerForm={setShowLedgerForm}
+                  setShowLedgerForm={(show) => {
+                    setShowLedgerForm(show);
+                    if (!show) setEditingLedger(null);
+                  }}
                   ledgersLoading={ledgersLoading}
-                  newLedger={newLedger} />
+                  newLedger={newLedger}
+                  isEditing={!!editingLedger} />
               )}
 
               <div className="space-y-3">
@@ -412,9 +452,26 @@ const PageTransactions: React.FC = () => {
             {currentLedger && <div className="bg-white rounded-xl shadow-md p-6">
               <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-6">
                 <div>
-                  <h1 className="text-2xl font-bold text-gray-800">
-                    {currentLedger.name}
-                  </h1>
+                  <div className="flex items-center gap-2">
+                    <h1 className="text-2xl font-bold text-gray-800">
+                      {currentLedger.name}
+                    </h1>
+                    <button
+                      onClick={() => {
+                        setNewLedger({
+                          name: currentLedger.name,
+                          description: currentLedger.description,
+                          dateCreated: currentLedger.dateCreated,
+                        });
+                        setEditingLedger(currentLedger);
+                        setShowLedgerForm(true);
+                      }}
+                      className="text-gray-400 hover:text-gray-700 cursor-pointer"
+                      aria-label="Edit ledger"
+                    >
+                      <PencilIcon size={16} />
+                    </button>
+                  </div>
                   {currentLedger.description && <p className="text-gray-500 mt-1">
                     {currentLedger.description}
                   </p>}
@@ -454,6 +511,7 @@ const PageTransactions: React.FC = () => {
                     setNewAccount={setNewAccount}
                     subType={subType}
                     setSubType={setSubType}
+                    paidToOptions={paidToOptions}
                   />
                 </div>
               )}

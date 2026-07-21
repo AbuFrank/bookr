@@ -233,9 +233,9 @@ describe('updateSpreadsheet', () => {
       lastDTotal: 500,
       lastNDTotal: 20,
       lastTotal: 1000,
-      E: [{ accountName: 'Vehicle', value: 45, previousTotal: 100 }],
-      NE: [],
-      D: [{ accountName: 'Checking', value: 60, previousTotal: 900 }],
+      E: [{ accountName: 'Vehicle', accountNumber: 12, value: 45, previousTotal: 100 }],
+      NE: [{ accountName: 'Groceries', accountNumber: 75, value: 58, previousTotal: 380 }],
+      D: [{ date: { seconds: Math.floor(new Date(2024, 2, 8).getTime() / 1000) }, description: 'Vendor B', amount: 60 }],
       ND: [],
     };
 
@@ -311,33 +311,18 @@ describe('updateSpreadsheet', () => {
           fields: 'userEnteredValue',
         },
       },
-      // expense account row: name, value, previousTotal
+      // deposit row: date, description, amount (chronological, no account grouping)
       {
         updateCells: {
-          range: { sheetId: 222, startRowIndex: 4, endRowIndex: 5, startColumnIndex: 9, endColumnIndex: 10 },
-          rows: [{ values: [{ userEnteredValue: { stringValue: 'Vehicle' } }] }],
+          range: { sheetId: 222, startRowIndex: 5, endRowIndex: 6, startColumnIndex: 0, endColumnIndex: 1 },
+          rows: [{ values: [{ userEnteredValue: { stringValue: '03/08/24' } }] }],
           fields: 'userEnteredValue',
         },
       },
-      {
-        updateCells: {
-          range: { sheetId: 222, startRowIndex: 4, endRowIndex: 5, startColumnIndex: 11, endColumnIndex: 12 },
-          rows: [{ values: [{ userEnteredValue: { numberValue: 45 } }] }],
-          fields: 'userEnteredValue',
-        },
-      },
-      {
-        updateCells: {
-          range: { sheetId: 222, startRowIndex: 4, endRowIndex: 5, startColumnIndex: 13, endColumnIndex: 14 },
-          rows: [{ values: [{ userEnteredValue: { numberValue: 100 } }] }],
-          fields: 'userEnteredValue',
-        },
-      },
-      // deposit account row: name, value only (no previousTotal column for D/ND)
       {
         updateCells: {
           range: { sheetId: 222, startRowIndex: 5, endRowIndex: 6, startColumnIndex: 1, endColumnIndex: 2 },
-          rows: [{ values: [{ userEnteredValue: { stringValue: 'Checking' } }] }],
+          rows: [{ values: [{ userEnteredValue: { stringValue: 'Vendor B' } }] }],
           fields: 'userEnteredValue',
         },
       },
@@ -348,18 +333,63 @@ describe('updateSpreadsheet', () => {
           fields: 'userEnteredValue',
         },
       },
+      // expense account row: placed by accountNumber (12), not write order -> row 4 + (12-1) = 15
+      {
+        updateCells: {
+          range: { sheetId: 222, startRowIndex: 15, endRowIndex: 16, startColumnIndex: 9, endColumnIndex: 10 },
+          rows: [{ values: [{ userEnteredValue: { stringValue: 'Vehicle' } }] }],
+          fields: 'userEnteredValue',
+        },
+      },
+      {
+        updateCells: {
+          range: { sheetId: 222, startRowIndex: 15, endRowIndex: 16, startColumnIndex: 11, endColumnIndex: 12 },
+          rows: [{ values: [{ userEnteredValue: { numberValue: 45 } }] }],
+          fields: 'userEnteredValue',
+        },
+      },
+      {
+        updateCells: {
+          range: { sheetId: 222, startRowIndex: 15, endRowIndex: 16, startColumnIndex: 13, endColumnIndex: 14 },
+          rows: [{ values: [{ userEnteredValue: { numberValue: 100 } }] }],
+          fields: 'userEnteredValue',
+        },
+      },
+      // non-deductible expense row: placed by accountNumber (75, the first NE slot) -> row 46 + (75-75) = 46
+      // account name is the combined "accountNumber - accountName" format
+      {
+        updateCells: {
+          range: { sheetId: 222, startRowIndex: 46, endRowIndex: 47, startColumnIndex: 0, endColumnIndex: 1 },
+          rows: [{ values: [{ userEnteredValue: { stringValue: '75 - Groceries' } }] }],
+          fields: 'userEnteredValue',
+        },
+      },
+      {
+        updateCells: {
+          range: { sheetId: 222, startRowIndex: 46, endRowIndex: 47, startColumnIndex: 2, endColumnIndex: 3 },
+          rows: [{ values: [{ userEnteredValue: { numberValue: 58 } }] }],
+          fields: 'userEnteredValue',
+        },
+      },
+      {
+        updateCells: {
+          range: { sheetId: 222, startRowIndex: 46, endRowIndex: 47, startColumnIndex: 4, endColumnIndex: 5 },
+          rows: [{ values: [{ userEnteredValue: { numberValue: 380 } }] }],
+          fields: 'userEnteredValue',
+        },
+      },
     ]);
   });
 
-  it('truncates each account-type group to its max row allotment instead of overflowing the sheet', async () => {
+  it('truncates the deposit transaction list to its max row allotment instead of overflowing the sheet', async () => {
     spreadsheetsGet.mockResolvedValue(twoSheets);
     spreadsheetsBatchUpdate.mockResolvedValue({ status: 200, data: {} });
 
     // MaxD is 16; send more rows than that and confirm the extras are dropped.
     const tooManyDeposits = Array.from({ length: 20 }, (_, i) => ({
-      accountName: `Account ${i}`,
-      value: i,
-      previousTotal: 0,
+      date: { seconds: Math.floor(new Date(2024, 2, 1 + i).getTime() / 1000) },
+      description: `Payer ${i}`,
+      amount: i,
     }));
 
     await googleAuth.updateSpreadsheet('sheet-id', [], {
@@ -373,12 +403,36 @@ describe('updateSpreadsheet', () => {
     });
 
     const [{ requestBody }] = spreadsheetsBatchUpdate.mock.calls[0];
-    // 1 lastTotal + 2 (lastDTotal/lastNDTotal) + 16 rows * 2 requests/row (name + value)
-    expect(requestBody.requests).toHaveLength(1 + 2 + 16 * 2);
+    // 1 lastTotal + 2 (lastDTotal/lastNDTotal) + 16 rows * 3 requests/row (date + description + amount)
+    expect(requestBody.requests).toHaveLength(1 + 2 + 16 * 3);
 
     const serialized = JSON.stringify(requestBody.requests);
-    expect(serialized).toContain('Account 15');
-    expect(serialized).not.toContain('Account 16');
+    expect(serialized).toContain('Payer 15');
+    expect(serialized).not.toContain('Payer 16');
+  });
+
+  it('skips expense accounts whose accountNumber falls outside their section\'s valid range', async () => {
+    spreadsheetsGet.mockResolvedValue(twoSheets);
+    spreadsheetsBatchUpdate.mockResolvedValue({ status: 200, data: {} });
+
+    await googleAuth.updateSpreadsheet('sheet-id', [], {
+      lastDTotal: 0,
+      lastNDTotal: 0,
+      lastTotal: 0,
+      // MaxE is 51, so 52 is one past the valid E range (1-51).
+      E: [{ accountName: 'Too High', accountNumber: 52, value: 10, previousTotal: 0 }],
+      // NE's valid range is 75-81, so 74 is one below it.
+      NE: [{ accountName: 'Too Low', accountNumber: 74, value: 10, previousTotal: 0 }],
+      D: [],
+      ND: [],
+    });
+
+    const [{ requestBody }] = spreadsheetsBatchUpdate.mock.calls[0];
+    // lastTotal + lastDTotal + lastNDTotal writes only - both out-of-range accounts are skipped entirely
+    expect(requestBody.requests).toHaveLength(3);
+    const serialized = JSON.stringify(requestBody.requests);
+    expect(serialized).not.toContain('Too High');
+    expect(serialized).not.toContain('Too Low');
   });
 
   it('swallows errors from the Sheets API instead of throwing', async () => {

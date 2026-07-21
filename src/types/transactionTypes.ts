@@ -3,6 +3,7 @@ export interface FormData {
   accountId: string,
   checkNumber: string,
   paidTo: string,
+  memo: string,
   value: string,
   date: Date,
   type: 'deposit' | 'expense',
@@ -16,6 +17,7 @@ export interface FirestoreTransaction {
   date: Date;
   dateCreated: Date;
   paidTo: string;
+  memo?: string;
   accountId: string;
   ledgerId: string | null;
   value: number;

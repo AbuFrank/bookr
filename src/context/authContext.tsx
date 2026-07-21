@@ -8,7 +8,7 @@ import {
 
 import { listenToAuthState } from '../firebase/firebase';
 import { transactionReducer } from '../reducer/transactionReducer';
-import { createAccount, createLedger, createTransaction, deleteFirestoreAccount, deleteFirestoreTransaction, loadAccounts, loadLedgers, loadTransactions, loadUserFolders, updateFirestoreAccount, updateFirestoreTransaction } from '../firebase/crud';
+import { createAccount, createLedger, createTransaction, deleteFirestoreAccount, deleteFirestoreTransaction, loadAccounts, loadLedgers, loadTransactions, loadUserFolders, updateFirestoreAccount, updateFirestoreTransaction, updateLedger as updateFirestoreLedger } from '../firebase/crud';
 import { TransactionActions, type FirestoreTransaction } from '../types/transactionTypes';
 import accountReducer from '../reducer/accountReducer';
 import { AccountActions, type FirestoreAccount } from '../types/accountTypes';
@@ -48,6 +48,7 @@ interface AuthContextType {
   ledgers: Ledger[];
   ledgersLoading: boolean;
   addLedger: (ledger: LedgerInput) => Promise<void>;
+  updateLedger: (ledger: Ledger) => Promise<void>;
   setCurrentLedger: (ledger: Ledger) => void;
   currentLedger: Ledger | null;
   currentLedgers: Ledger[] | [];
@@ -264,6 +265,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const updateLedger = async (updatedLedger: Ledger) => {
+    setLedgersLoading(true);
+    await updateFirestoreLedger(updatedLedger);
+    dispatchLedger({ type: LedgerActions.UPDATE_LEDGER, payload: updatedLedger });
+    // UPDATE_LEDGER only updates `ledgers`/`currentLedger`; the sidebar list
+    // (`currentLedgers`, filtered per fiscal year) needs its own refresh too.
+    dispatchLedger({
+      type: LedgerActions.SET_CURRENT_LEDGERS,
+      payload: ledgerState.currentLedgers.map(ledger => ledger.id === updatedLedger.id ? updatedLedger : ledger),
+    });
+    setLedgersLoading(false);
+  };
+
   const setCurrentLedger = (ledger: Ledger) => {
     console.log('set current ledger triggered==> ', ledger)
     dispatchLedger({ type: LedgerActions.SET_CURRENT_LEDGER, payload: ledger });
@@ -320,6 +334,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     currentLedgers: ledgerState.currentLedgers,
     ledgers: ledgerState.currentLedgers,
     addLedger,
+    updateLedger,
     setCurrentLedger,
     folders: folderState.folders,
     currentFiscalYear: folderState.currentYear,

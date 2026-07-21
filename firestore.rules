@@ -1,0 +1,41 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    // folders, ledgers, accounts, and transactions are all top-level
+    // collections scoped by a `userId` field on each document (doc IDs are
+    // client-generated, so there's no docId == uid shortcut available).
+    match /folders/{folderId} {
+      allow read, delete: if isOwner(resource.data.userId);
+      allow create: if isOwner(request.resource.data.userId);
+      allow update: if isOwner(resource.data.userId)
+                    && request.resource.data.userId == resource.data.userId;
+    }
+
+    match /ledgers/{ledgerId} {
+      allow read, delete: if isOwner(resource.data.userId);
+      allow create: if isOwner(request.resource.data.userId);
+      allow update: if isOwner(resource.data.userId)
+                    && request.resource.data.userId == resource.data.userId;
+    }
+
+    match /accounts/{accountId} {
+      allow read, delete: if isOwner(resource.data.userId);
+      allow create: if isOwner(request.resource.data.userId);
+      allow update: if isOwner(resource.data.userId)
+                    && request.resource.data.userId == resource.data.userId;
+    }
+
+    match /transactions/{transactionId} {
+      allow read, delete: if isOwner(resource.data.userId);
+      allow create: if isOwner(request.resource.data.userId);
+      allow update: if isOwner(resource.data.userId)
+                    && request.resource.data.userId == resource.data.userId;
+    }
+  }
+}

@@ -38,7 +38,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ accounts, transaction
           <tr>
             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Check No.</th>
-            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">To Whom Paid</th>
+            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment To / Deposit From</th>
             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Account</th>
             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
@@ -61,6 +61,9 @@ const TransactionList: React.FC<TransactionListProps> = ({ accounts, transaction
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm font-medium text-gray-900">{transaction.paidTo}</div>
+                  {transaction.memo && (
+                    <div className="text-xs text-gray-400 mt-1">{transaction.memo}</div>
+                  )}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm text-gray-500">{account?.accountName}</div>
@@ -73,7 +76,9 @@ const TransactionList: React.FC<TransactionListProps> = ({ accounts, transaction
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full
                     ${transactionType === 'deposit' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                    {transactionType ? transactionType.charAt(0).toUpperCase() + transactionType.slice(1) : 'Unknown'}
+                    {transactionType
+                      ? `${transactionType.charAt(0).toUpperCase() + transactionType.slice(1)}${account?.subType === 'non-income' ? ' | Non-Inc' : account?.subType === 'non-deductible' ? ' | Non-Ded' : ''}`
+                      : 'Unknown'}
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">

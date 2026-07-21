@@ -3,7 +3,9 @@ import {
   calculateAccountTotals,
   calculateTotals,
   findAccountById,
+  getAccountNumberRange,
   getAccountTypeCode,
+  isAccountNumberInRange,
 } from './ledger';
 import type { FirestoreAccount } from '../types/accountTypes';
 import type { FirestoreTransaction } from '../types/transactionTypes';
@@ -73,6 +75,46 @@ describe('getAccountTypeCode', () => {
   });
 });
 
+describe('getAccountNumberRange', () => {
+  it('returns null for deposit accounts', () => {
+    expect(getAccountNumberRange('deposit', null)).toBeNull();
+    expect(getAccountNumberRange('deposit', 'non-income')).toBeNull();
+  });
+
+  it('returns [1, 51] for deductible expense accounts', () => {
+    expect(getAccountNumberRange('expense', null)).toEqual([1, 51]);
+  });
+
+  it('returns [75, 81] for non-deductible expense accounts', () => {
+    expect(getAccountNumberRange('expense', 'non-deductible')).toEqual([75, 81]);
+  });
+});
+
+describe('isAccountNumberInRange', () => {
+  it('allows any number for deposit accounts', () => {
+    expect(isAccountNumberInRange('deposit', null, 9999)).toBe(true);
+  });
+
+  it('enforces 1-51 for deductible expense accounts', () => {
+    expect(isAccountNumberInRange('expense', null, 1)).toBe(true);
+    expect(isAccountNumberInRange('expense', null, 51)).toBe(true);
+    expect(isAccountNumberInRange('expense', null, 52)).toBe(false);
+    expect(isAccountNumberInRange('expense', null, 0)).toBe(false);
+  });
+
+  it('enforces 75-81 for non-deductible expense accounts', () => {
+    expect(isAccountNumberInRange('expense', 'non-deductible', 75)).toBe(true);
+    expect(isAccountNumberInRange('expense', 'non-deductible', 81)).toBe(true);
+    expect(isAccountNumberInRange('expense', 'non-deductible', 74)).toBe(false);
+    expect(isAccountNumberInRange('expense', 'non-deductible', 82)).toBe(false);
+  });
+
+  it('rejects non-numeric input', () => {
+    expect(isAccountNumberInRange('expense', null, null)).toBe(false);
+    expect(isAccountNumberInRange('expense', null, 'abc')).toBe(false);
+  });
+});
+
 describe('findAccountById', () => {
   const accounts = [makeAccount({ id: 'acc-1' }), makeAccount({ id: 'acc-2' })];
 
@@ -139,8 +181,8 @@ describe('calculateTotals', () => {
 });
 
 describe('calculateAccountTotals', () => {
-  const checking = makeAccount({ id: 'checking', accountName: 'Checking', type: 'deposit', subType: null });
-  const vehicle = makeAccount({ id: 'vehicle', accountName: 'Vehicle', type: 'expense', subType: null });
+  const checking = makeAccount({ id: 'checking', accountName: 'Checking', accountNumber: 3, type: 'deposit', subType: null });
+  const vehicle = makeAccount({ id: 'vehicle', accountName: 'Vehicle', accountNumber: 12, type: 'expense', subType: null });
   const accounts = [checking, vehicle];
 
   const ledgerA = makeLedger({ id: 'ledger-a', fileId: 'file-a', dateCreated: new Date('2024-01-01') });
@@ -148,15 +190,15 @@ describe('calculateAccountTotals', () => {
   const ledgerC = makeLedger({ id: 'ledger-c', fileId: 'file-c', dateCreated: new Date('2024-01-15') });
 
   const transactions = [
-    makeTransaction({ id: 'txn-1', ledgerId: 'ledger-a', accountId: 'checking', value: 500 }),
-    makeTransaction({ id: 'txn-2', ledgerId: 'ledger-a', accountId: 'vehicle', value: 50 }),
-    makeTransaction({ id: 'txn-3', ledgerId: 'ledger-b', accountId: 'vehicle', value: 30 }),
-    makeTransaction({ id: 'txn-4', ledgerId: 'ledger-c', accountId: 'checking', value: 200 }),
+    makeTransaction({ id: 'txn-1', ledgerId: 'ledger-a', accountId: 'checking', value: 500, date: new Date('2024-01-02'), paidTo: 'Employer' }),
+    makeTransaction({ id: 'txn-2', ledgerId: 'ledger-a', accountId: 'vehicle', value: 50, date: new Date('2024-01-03') }),
+    makeTransaction({ id: 'txn-3', ledgerId: 'ledger-b', accountId: 'vehicle', value: 30, date: new Date('2024-01-09') }),
+    makeTransaction({ id: 'txn-4', ledgerId: 'ledger-c', accountId: 'checking', value: 200, date: new Date('2024-01-16'), paidTo: 'Client' }),
   ];
 
   const fiscalYear = makeFiscalYear({ startingBalance: 100 });
 
-  it('walks ledgers chronologically and carries running per-account totals forward', () => {
+  it('walks ledgers chronologically and carries running per-account totals forward for E/NE', () => {
     // Deliberately unsorted input to verify the function sorts by dateCreated itself.
     const currentLedgers = [ledgerC, ledgerA, ledgerB];
 
@@ -169,22 +211,25 @@ describe('calculateAccountTotals', () => {
     expect(a.fileId).toBe('file-a');
     expect(a.lastTotal).toBe(100);
     expect(a.lastDTotal).toBe(0);
-    expect(a.D).toEqual([{ accountName: 'Checking', value: 500, previousTotal: 0 }]);
-    expect(a.E).toEqual([{ accountName: 'Vehicle', value: 50, previousTotal: 0 }]);
+    expect(a.D).toEqual([{ date: transactions[0].date, description: 'Employer', amount: 500 }]);
+    expect(a.E).toEqual([{ accountName: 'Vehicle', accountNumber: 12, value: 50, previousTotal: 0 }]);
 
-    // Ledger B: carries forward checking's previous total even with no checking activity,
-    // and vehicle's previousTotal reflects ledger A's expense.
+    // Ledger B: no deposit activity, so D is empty (no more zero-value carry-forward
+    // placeholder row now that deposits are listed chronologically per-transaction).
+    // Vehicle's previousTotal still reflects ledger A's expense.
     expect(b.fileId).toBe('file-b');
     expect(b.lastTotal).toBe(550); // 100 starting + 500 deposit - 50 expense from ledger A
     expect(b.lastDTotal).toBe(500); // accumulated from ledger A's deposit
-    expect(b.D).toEqual([{ accountName: 'Checking', value: 0, previousTotal: 500 }]);
-    expect(b.E).toEqual([{ accountName: 'Vehicle', value: 30, previousTotal: 50 }]);
+    expect(b.D).toEqual([]);
+    expect(b.E).toEqual([{ accountName: 'Vehicle', accountNumber: 12, value: 30, previousTotal: 50 }]);
 
     // Ledger C: reflects the full history of both prior ledgers.
     expect(c.fileId).toBe('file-c');
     expect(c.lastTotal).toBe(520); // 550 - 30 expense from ledger B
-    expect(c.D).toEqual([{ accountName: 'Checking', value: 200, previousTotal: 500 }]);
-    expect(c.E).toEqual([{ accountName: 'Vehicle', value: 0, previousTotal: 80 }]);
+    expect(c.D).toEqual([{ date: transactions[3].date, description: 'Client', amount: 200 }]);
+    // E/NE still carry forward a zero-value row (unlike D/ND) since the sheet needs
+    // each account's cumulative previousTotal even in a ledger with no new activity.
+    expect(c.E).toEqual([{ accountName: 'Vehicle', accountNumber: 12, value: 0, previousTotal: 80 }]);
   });
 
   it('slices the returned updates to the current ledger onward, while keeping full history in the running totals', () => {
@@ -194,7 +239,21 @@ describe('calculateAccountTotals', () => {
     expect(updates.map(u => u.fileId)).toEqual(['file-b', 'file-c']);
     // Even though ledger A isn't returned, ledger B's numbers still reflect it.
     expect(updates[0].lastDTotal).toBe(500);
-    expect(updates[0].D[0]).toEqual({ accountName: 'Checking', value: 0, previousTotal: 500 });
+    expect(updates[0].D).toEqual([]);
+  });
+
+  it('lists multiple deposits in a ledger chronologically, regardless of transaction insertion order', () => {
+    const outOfOrderDeposits = [
+      makeTransaction({ id: 'txn-later', ledgerId: 'ledger-a', accountId: 'checking', value: 100, date: new Date('2024-01-10'), paidTo: 'Later Payer' }),
+      makeTransaction({ id: 'txn-earlier', ledgerId: 'ledger-a', accountId: 'checking', value: 200, date: new Date('2024-01-01'), paidTo: 'Earlier Payer' }),
+    ];
+
+    const { updates } = calculateAccountTotals(outOfOrderDeposits, ledgerA, [ledgerA], accounts, fiscalYear);
+
+    expect(updates[0].D).toEqual([
+      { date: outOfOrderDeposits[1].date, description: 'Earlier Payer', amount: 200 },
+      { date: outOfOrderDeposits[0].date, description: 'Later Payer', amount: 100 },
+    ]);
   });
 
   it('skips transactions referencing an account that no longer exists', () => {
@@ -206,7 +265,7 @@ describe('calculateAccountTotals', () => {
     const { updates } = calculateAccountTotals(withOrphanTransaction, ledgerA, [ledgerA], accounts, fiscalYear);
 
     expect(updates).toHaveLength(1);
-    expect(updates[0].D).toEqual([{ accountName: 'Checking', value: 500, previousTotal: 0 }]);
-    expect(updates[0].E).toEqual([{ accountName: 'Vehicle', value: 50, previousTotal: 0 }]);
+    expect(updates[0].D).toEqual([{ date: transactions[0].date, description: 'Employer', amount: 500 }]);
+    expect(updates[0].E).toEqual([{ accountName: 'Vehicle', accountNumber: 12, value: 50, previousTotal: 0 }]);
   });
 });

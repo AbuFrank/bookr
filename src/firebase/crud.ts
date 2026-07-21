@@ -148,6 +148,16 @@ export async function createLedger(ledger: Ledger) {
   await setDoc(doc(db, 'ledgers', ledger.id), ledger);
 };
 
+export async function updateLedger(ledger: Ledger) {
+  try {
+    const ledgerDocRef = doc(db, 'ledgers', ledger.id);
+    await updateDoc(ledgerDocRef, { ...ledger });
+    console.log('Ledger updated successfully!');
+  } catch (error) {
+    console.error('Error updating ledger:', error);
+  }
+}
+
 export const loadLedgers = async (userId: string): Promise<Ledger[]> => {
   const q = query(collection(db, 'ledgers'), where('userId', '==', userId));
   const snapshot = await getDocs(q);

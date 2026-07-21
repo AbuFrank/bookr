@@ -166,10 +166,14 @@ export const copyTemplateFile = async (templateId, fileName, userEmail, parentFo
 // add ledger back and create entries
 // TODO use value - 1 to adjust for 0-indexed for convenience here
 const cellLocations = {
-  "E": { row: 4, accountName: 9, value: 11, previousTotal: 13 }, // Row 5. Columns J, L, N
-  "D": { row: 5, accountName: 1, value: 6 }, // Row 6, Columns B, G
-  "ND": { row: 29, accountName: 1, value: 6 }, // Row 30, Colmns B, G
-  "NE": { row: 46, accountName: 0, value: 2, previousTotal: 4 }, // Row 47. Columns A, C, E
+  // accountNumber 1-51 maps directly to rows E.row..E.row+MaxE-1. Column I (index 8) is a
+  // static pre-printed 1-51 index baked into the template - never write to it.
+  "E": { row: 4, accountNumberStart: 1, accountName: 9, value: 11, previousTotal: 13 }, // Row 5. Columns J, L, N
+  // Deposits/Non-Income Deposits list transactions chronologically, not grouped by account.
+  "D": { row: 5, date: 0, description: 1, amount: 6 }, // Row 6, Columns A, B (merged B-F), G
+  "ND": { row: 29, date: 0, description: 1, amount: 6 }, // Row 30, Columns A, B (merged B-F), G
+  // accountNumber 75-81 maps to rows NE.row..NE.row+MaxNE-1.
+  "NE": { row: 46, accountNumberStart: 75, accountName: 0, value: 2, previousTotal: 4 }, // Row 47. Columns A, C, E
   "lastDTotal": { row: 23, col: 6 }, // Row 24, Column G
   "lastNDTotal": { row: 38, col: 6 }, // Row 39, Column G
   "lastTotal": { row: 4, col: 11 },
@@ -177,7 +181,7 @@ const cellLocations = {
   "description": { row: 0, col: 8 }
 }
 
-const MaxE = 52;
+const MaxE = 51;
 const MaxNE = 7;
 const MaxD = 16;
 const MaxND = 7;
@@ -363,34 +367,109 @@ export async function updateSpreadsheet(spreadsheetId, transactions, allUpdates)
       });
     })
 
-    console.log("type updates??", typeUpdates)
-    // Each account type: Expense (E), Non-Deductible Expense (NE), Receipts (D), Non-Income Deposits (ND)
-    Object.entries(typeUpdates).forEach(([type, typeData]) => {
+    console.log("type updates??", typeUpdates);
+
+    // Deposits (D) / Non-Income Deposits (ND): one row per transaction, chronological.
+    // typeUpdates[type] is already sorted ascending by date (see calculateAccountTotals).
+    ['D', 'ND'].forEach(type => {
       const cellLocation = cellLocations[type]
-      console.log("cell location!!!!! ", cellLocation)
+      const items = typeUpdates[type] || []
+      const max = type === 'D' ? MaxD : MaxND
 
-      // TODO sort typeData by accountName
+      for (let index = 0; index < Math.min(items.length, max); index++) {
+        const { date, description, amount } = items[index]
+        const rowIndex = cellLocation.row + index
 
-      // Each account
-      for (let index = 0; index < typeData.length; index++) {
-        const row = typeData[index]
-        // Prevent updates beyond space allotment in file
+        requests.push({
+          updateCells: {
+            range: {
+              sheetId: summarySheetId,
+              startRowIndex: rowIndex,
+              endRowIndex: rowIndex + 1,
+              startColumnIndex: cellLocation.date,
+              endColumnIndex: cellLocation.date + 1,
+            },
+            rows: [{
+              values: [
+                {
+                  userEnteredValue: {
+                    stringValue: date ? formatDate(convertFirestoreTimestamp(date)) : ''
+                  }
+                }
+              ]
+            }],
+            fields: 'userEnteredValue'
+          }
+        });
+
+        requests.push({
+          updateCells: {
+            range: {
+              sheetId: summarySheetId,
+              startRowIndex: rowIndex,
+              endRowIndex: rowIndex + 1,
+              startColumnIndex: cellLocation.description,
+              endColumnIndex: cellLocation.description + 1,
+            },
+            rows: [{
+              values: [
+                {
+                  userEnteredValue: {
+                    stringValue: description || ''
+                  }
+                }
+              ]
+            }],
+            fields: 'userEnteredValue'
+          }
+        });
+
+        requests.push({
+          updateCells: {
+            range: {
+              sheetId: summarySheetId,
+              startRowIndex: rowIndex,
+              endRowIndex: rowIndex + 1,
+              startColumnIndex: cellLocation.amount,
+              endColumnIndex: cellLocation.amount + 1,
+            },
+            rows: [{
+              values: [
+                {
+                  userEnteredValue: {
+                    numberValue: amount || 0
+                  }
+                }
+              ]
+            }],
+            fields: 'userEnteredValue'
+          }
+        });
+      }
+    });
+
+    // Expenses (E) / Non-Deductible Expenses (NE): each account lands on a fixed row
+    // determined by its own accountNumber, so accounts with no activity this ledger
+    // simply produce no write (their row stays blank/unchanged).
+    ['E', 'NE'].forEach(type => {
+      const cellLocation = cellLocations[type]
+      const items = typeUpdates[type] || []
+      const maxRows = type === 'E' ? MaxE : MaxNE
+      const maxAccountNumber = cellLocation.accountNumberStart + maxRows - 1
+
+      items.forEach(({ accountName, accountNumber, value, previousTotal }) => {
         if (
-          type === "E" && index === MaxE ||
-          type === "NE" && index === MaxNE ||
-          type === "D" && index === MaxD ||
-          type === "ND" && index === MaxND
+          typeof accountNumber !== 'number' ||
+          accountNumber < cellLocation.accountNumberStart ||
+          accountNumber > maxAccountNumber
         ) {
-          break;
+          console.log(`[updateSpreadsheet] skipping ${type} account "${accountName}" - accountNumber ${accountNumber} is out of range`)
+          return
         }
 
-        const rowIndex = cellLocation.row + index;
+        const rowIndex = cellLocation.row + (accountNumber - cellLocation.accountNumberStart)
+        const displayName = type === 'NE' ? `${accountNumber} - ${accountName}` : accountName
 
-        console.log("row ", rowIndex, " ==> ", row)
-
-        const { accountName, value, previousTotal } = row;
-
-        // Account Name
         requests.push({
           updateCells: {
             range: {
@@ -404,7 +483,7 @@ export async function updateSpreadsheet(spreadsheetId, transactions, allUpdates)
               values: [
                 {
                   userEnteredValue: {
-                    stringValue: accountName
+                    stringValue: displayName
                   }
                 }
               ]
@@ -435,30 +514,28 @@ export async function updateSpreadsheet(spreadsheetId, transactions, allUpdates)
           }
         });
 
-        if (type === "E" || type === "NE") {
-          requests.push({
-            updateCells: {
-              range: {
-                sheetId: summarySheetId,
-                startRowIndex: rowIndex,
-                endRowIndex: rowIndex + 1,
-                startColumnIndex: cellLocation.previousTotal,
-                endColumnIndex: cellLocation.previousTotal + 1
-              },
-              rows: [{
-                values: [
-                  {
-                    userEnteredValue: {
-                      numberValue: previousTotal
-                    }
+        requests.push({
+          updateCells: {
+            range: {
+              sheetId: summarySheetId,
+              startRowIndex: rowIndex,
+              endRowIndex: rowIndex + 1,
+              startColumnIndex: cellLocation.previousTotal,
+              endColumnIndex: cellLocation.previousTotal + 1
+            },
+            rows: [{
+              values: [
+                {
+                  userEnteredValue: {
+                    numberValue: previousTotal
                   }
-                ]
-              }],
-              fields: 'userEnteredValue'
-            }
-          });
-        }
-      };
+                }
+              ]
+            }],
+            fields: 'userEnteredValue'
+          }
+        });
+      })
     })
 
     // Execute batch update

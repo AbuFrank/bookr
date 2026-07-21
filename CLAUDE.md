@@ -16,9 +16,13 @@ npm run build         # tsc -b && vite build
 npm run lint          # eslint .
 npm run preview       # preview production build
 npm start             # node server/index.js (production, serves dist/ + /api)
+npm test              # vitest run (all suites, node environment)
+npm run test:watch    # vitest watch mode
 ```
 
-There is no test suite/runner configured in this repo.
+### Tests
+
+Vitest, configured in `vite.config.ts` (`test.include`: `src/**/*.test.{ts,tsx}`, `server/**/*.test.js`, `api/**/*.test.js`). 100 tests across 12 files as of this writing — reducers, `helpers/{ledger,folders,date,transactions}`, `lib/firestore`, `types/spreadsheetTypes`, `server/google-auth`, and `api/routeParity.test.js`. That last one drives both `server/googleDriveRoutes.js` and the matching `api/*.js` handler with the same mocked `server/google-auth.js` and asserts identical status codes/bodies — it's the guardrail for the "keep both call sites in sync" rule below, so a signature or error-handling change to one side that isn't mirrored on the other will fail it.
 
 ### Local server setup
 
@@ -32,8 +36,8 @@ Firestore-backed entities, all scoped by `userId`:
 
 - **Folder** (`types/folderTypes.ts`) — mirrors a Google Drive folder tree: `Bookr App` (root, auto-created on first login) → **book** (a named group, e.g. a business or household) → **fiscal year** (named by year, holds `startingBalance`) → ledgers live inside a fiscal year folder. `helpers/folders.ts#sortFoldersIntoTree` rebuilds this tree from the flat Firestore list for `FolderTree`/`PageBooks`.
 - **Ledger** (`types/ledgerTypes.ts`) — one per Google Sheet, created by copying a template file (`googleDriveAPI.copyReportTemplate` → `POST /api/copy-template` → `copyTemplateFile` in `server/google-auth.js`). Holds `fileId` (the Sheet's Drive file id) and `parentFolderId` (the fiscal year folder).
-- **Account** (`types/accountTypes.ts`) — a bank account/category scoped to a book (`bookId`), typed as `deposit`/`expense` with an optional `subType` of `non-deductible` (expense) or `non-income` (deposit). These four combinations map to the sheet's column groups: `E` (expense), `NE` (non-deductible expense), `D` (deposit/receipt), `ND` (non-income deposit) — see `cellLocations` in `server/google-auth.js`.
-- **Transaction** (`types/transactionTypes.ts`) — belongs to an account and a ledger (`ledgerId`).
+- **Account** (`types/accountTypes.ts`) — a bank account/category scoped to a book (`bookId`), with an `accountNumber` (used for dedup and display, e.g. `"3 - Groceries"` in `FormTransaction`) and typed as `deposit`/`expense` with an optional `subType` of `non-deductible` (expense) or `non-income` (deposit). These four combinations map to the sheet's column groups: `E` (expense), `NE` (non-deductible expense), `D` (deposit/receipt), `ND` (non-income deposit) — see `cellLocations` in `server/google-auth.js`. **Deductible expense accounts must be numbered 1-51 and non-deductible expense accounts 75-81** (`helpers/ledger.ts#getAccountNumberRange`/`isAccountNumberInRange`, enforced on creation in `PageTransactions.tsx`) — these ranges are a fixed property of the physical Google Sheet template (each number maps directly to a row) and must stay in sync with `MaxE`/`MaxNE`/`accountNumberStart` in `server/google-auth.js#cellLocations`. Deposit-type accounts have no number range; they're no longer placed on a per-account row at all (see below).
+- **Transaction** (`types/transactionTypes.ts`) — belongs to an account and a ledger (`ledgerId`), and holds only `accountId`/`value`/date/etc. **It does not carry its own `type`/`subType`** — those live solely on the `Account`. Always resolve a transaction's type via `getAccountTypeCode`/`findAccountById` in `helpers/ledger.ts` (looking it up by `accountId`), never read `transaction.type` — that field was removed from `FirestoreTransaction` in the "Phase 2" pass (see `changelog.md`) after it caused a bug where stale/absent per-transaction type data was trusted instead of the account's.
 
 ### Frontend state
 
@@ -45,7 +49,12 @@ Pages: `PageBooks.tsx` (create/select book + fiscal year, creates the Drive fold
 
 ### Google Sheets sync
 
-Firestore is the source of truth; the Sheet is a generated report kept in sync manually. `ReportTrigger` calls `helpers/ledger.ts#calculateAccountTotals`, which walks *all* ledgers in the current fiscal year in chronological order accumulating running per-account totals (`previousTotal`) and running deposit/non-income totals (`lastDTotal`/`lastNDTotal`/`lastTotal`, seeded from the fiscal year's `startingBalance`), and returns per-ledger `Update` payloads from the *current* ledger forward. Those are sent as one batch to `PUT /api/update-sheets` → `updateSpreadsheet` in `server/google-auth.js`, which writes fixed cell ranges (`cellLocations`) via `sheets.spreadsheets.batchUpdate`. Each ledger sheet has a fixed row budget per column group (`MaxE`/`MaxNE`/`MaxD`/`MaxND`) — writes beyond that are silently dropped (see TODOs in `notes.txt`/`changelog.md`).
+Firestore is the source of truth; the Sheet is a generated report kept in sync manually. `ReportTrigger` calls `helpers/ledger.ts#calculateAccountTotals`, which walks *all* ledgers in the current fiscal year in chronological order and returns per-ledger `Update` payloads from the *current* ledger forward, sent as one batch to `PUT /api/update-sheets` → `updateSpreadsheet` in `server/google-auth.js`, which writes fixed cell ranges (`cellLocations`) via `sheets.spreadsheets.batchUpdate`. The Account Summary sheet has two different write strategies depending on section, matching the physical template:
+
+- **Deposits (`D`) / Non-Income Deposits (`ND`)** — one row per **transaction**, listed chronologically (date/payee/amount), not grouped by account. Built fresh per-ledger in `calculateAccountTotals` (not carried forward — a ledger with no deposit activity produces an empty array). `lastDTotal`/`lastNDTotal` (cumulative totals seeded from the fiscal year's `startingBalance`) are still tracked and written to their own footer cells.
+- **Expenses (`E`) / Non-Deductible Expenses (`NE`)** — one row per **account**, but the row is now determined by the account's own `accountNumber` (`cellLocations[type].row + (accountNumber - accountNumberStart)`), not by write order — so accounts with no activity in a given ledger simply have no write request (their row stays whatever it was), and `previousTotal` still carries forward across ledgers via `runningTotals` in `calculateAccountTotals`. `updateSpreadsheet` skips (with a console warning) any account whose number falls outside its section's valid range instead of computing a bogus row index.
+
+Each section still has a fixed row budget (`MaxE`/`MaxNE`/`MaxD`/`MaxND`) — for `D`/`ND` this truncates the transaction list past that many rows per ledger; for `E`/`NE` it's implied by the accountNumber range itself. Writes beyond budget are silently dropped for `D`/`ND` (see TODOs in `notes.txt`/`changelog.md`).
 
 ### Server vs. `api/`
 
@@ -53,13 +62,23 @@ Google API logic (`copyTemplateFile`, `createFolder`, `updateSpreadsheet`, `getS
 - `server/googleDriveRoutes.js` — Express routes mounted under `/api` for local dev (`npm run dev:server` / `npm start`).
 - `api/*.js` — standalone Vercel serverless functions that import from `../server/google-auth.js` directly, used in the Vercel deployment instead of the long-running Express server.
 
-Keep both call sites in sync when changing the shared `server/google-auth.js` functions' signatures.
+Keep both call sites in sync when changing the shared `server/google-auth.js` functions' signatures — `api/routeParity.test.js` (see Tests above) fails if the two diverge in status codes or response bodies.
 
 ### Auth
 
 Firebase Google Sign-In (`firebase/authService.ts`, `firebase/firebase.ts`). The Drive/Sheets calls are *not* authenticated as the end user — a single service account (shared via `GOOGLE_PARENT_FOLDER_ID`) owns all files and grants the user's email `reader` access after creating/copying each file. `googleDriveAPI` (`lib/googleDriveClient.ts`) tracks the current Firebase user only to attach their email to API calls, not for token auth.
 
+### Firestore security rules
+
+`firestore.rules` at the repo root is a **reference file only** — there's no `firebase.json`/CLI deploy config, so changes to it must be pasted into the Firebase console by hand. It scopes read/create/update/delete on `folders`/`ledgers`/`accounts`/`transactions` to `request.auth.uid == userId` (doc IDs are client-generated via `generateFirestoreId` in `lib/firestore.ts`, so there's no `docId == uid` shortcut) and blocks reassigning a doc's `userId` on update.
+
 ## Known rough edges (see `notes.txt`, `changelog.md`)
 
 - `/auth/google` OAuth route in `googleDriveRoutes.js` is dead code left over from a prior per-user-token auth flow (references an undefined `oauth2Client`); the app now uses the shared service account instead.
-- Ledger/ledger-total recalculation re-walks every ledger in a fiscal year on every sync; there's no persisted running total on the ledger doc yet.
+- Ledger/ledger-total recalculation re-walks every ledger in a fiscal year on every sync; there's no persisted running total on the ledger doc yet (see the `TODO`s in `calculateAccountTotals`, `helpers/ledger.ts`).
+- `updateSpreadsheet` (`server/google-auth.js`) swallows its own errors (`catch` logs and returns `undefined` instead of rethrowing), so a failed sheet write shows up as `{ success: false, data: undefined }` in the `/update-sheets` response rather than an HTTP error — callers must check `success` per-index, not just the overall request status.
+- `notes.txt` is the running scratch todo list (`+` = done, `-` = open) plus open questions from the user about spreadsheet layout; check it before starting new ledger/UI work, and update it (don't just leave stale `-` items) as todos are completed.
+
+## History
+
+`changelog.md` has dated entries summarizing shipped changes; check it for what happened recently before assuming this doc is fully current, and add an entry there (not here) when finishing a batch of work.

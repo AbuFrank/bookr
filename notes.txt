@@ -2,26 +2,26 @@
 
 1. Do we want each ledger as a tab in one spreadsheet or spread out through multiple spreadsheets
 1. Do you still want the running list to be included in the spreadsheet or is it okay just in the app (for printing purposes)
-1. Do we want to change the ledgers to show accountName, value, and total to week for all? or keep them different?
+1. [Resolved] Deposits/Non-Income Deposits list transactions chronologically (date/payee/amount), no account grouping. Expenses/Non-Deductible Expenses stay grouped by account, placed on a fixed row by accountNumber (Deductible: 1-51, Non-Deductible: 75-81).
 
 
 # First session
 
 + Starting balance field (for first ledger)
-- Number accounts
++ Number accounts
 + Don't reset date after transaction submit
-- Store "to whom paid" in array
++ Store "to whom paid" in array -- built as autocomplete/history (datalist of past paidTo values) instead of an array field on the transaction, per discussion
 + Make the transactions full width and ledgers shortened vertically
-- Add "Expense | Non-Ded" and "Deposit | Non-Inc"
-- Sort by transaction date and sort by account Number
++ Add "Expense | Non-Ded" and "Deposit | Non-Inc"
+- Sort by transaction date and sort by account Number -- plan is to use TanStack Table for click-to-sort columns, not yet implemented
 + Change + Add Transaction button to "Close form" and collapse transaction form
 + Change "Choose or Create a Ledger" to "Entry Form"
-- Make sure Ledger is editable (name and description)
++ Make sure Ledger is editable (name and description)
 + Change "Income and Expense Ledger" to "Account Summary Sheet"
 + Change "Transactions" to "Ledger" for the summary at the bottom
-- Change "To Whom Paid / Memo" to "Payment To / Deposit From"
-- Add memo field and show it below payment to/from cell
-- Add dates to the cells for income and non-income deposits
-- remove accounts for deposits and list chronologically
++ Change "To Whom Paid / Memo" to "Payment To / Deposit From"
++ Add memo field and show it below payment to/from cell
++ Add dates to the cells for income and non-income deposits
++ remove accounts for deposits and list chronologically
 
-- update firestore rules to use userId
++ update firestore rules to use userId -- firestore.rules written and in repo, still needs to be pasted into the Firebase console manually (no firebase.json/CLI deploy set up)
