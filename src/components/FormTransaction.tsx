@@ -1,5 +1,6 @@
 import type { FirestoreAccount, FormAccountData } from '../types/accountTypes';
 import type { FormData } from '../types/transactionTypes';
+import { getAccountNumberRange } from '../helpers/ledger';
 import MyDatePicker from './MyDatePicker';
 
 const labelClass = "block text-sm font-medium text-gray-700 mb-1"
@@ -134,22 +135,6 @@ const FormTransaction: React.FC<FormTransactionProps> = ({
                 )}
               </div>
               <div>
-                <label className={labelClass}>Account Number</label>
-                <input
-                  type="text"
-                  name="accountNumber"
-                  value={newAccount.accountNumber ? newAccount.accountNumber.toString() : ""}
-                  onChange={handleAccountFormChange}
-                  className={inputClass}
-                  placeholder="Enter Account Number"
-                />
-                {errors.accountNumber && (
-                  <div className="mt-2 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md">
-                    {errors.accountNumber}
-                  </div>
-                )}
-              </div>
-              <div>
                 <label className={labelClass}>Type</label>
                 <select
                   name="type"
@@ -184,6 +169,30 @@ const FormTransaction: React.FC<FormTransactionProps> = ({
                       {newAccount.type === 'deposit' ? 'Non-Income' : 'Non-Deductible'}
                     </span>
                   </div>
+                </div>
+              )}
+              {newAccount.type && (
+                <div>
+                  <label className={labelClass}>Account Number</label>
+                  <input
+                    type="text"
+                    name="accountNumber"
+                    value={newAccount.accountNumber ? newAccount.accountNumber.toString() : ""}
+                    onChange={handleAccountFormChange}
+                    className={inputClass}
+                    placeholder="Enter Account Number"
+                  />
+                  {(() => {
+                    const range = getAccountNumberRange(newAccount.type, newAccount.subType);
+                    return range ? (
+                      <p className="mt-1 text-xs text-gray-500">Allowed range: {range[0]}-{range[1]}</p>
+                    ) : null;
+                  })()}
+                  {errors.accountNumber && (
+                    <div className="mt-2 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md">
+                      {errors.accountNumber}
+                    </div>
+                  )}
                 </div>
               )}
               <div className="mb-1 flex flex-col xs:flex-row gap-2">
