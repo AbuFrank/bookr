@@ -195,23 +195,34 @@ const PageTransactions: React.FC = () => {
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
-    const nextAccount = { ...newAccount, [name]: value };
+    const parsedValue = name === 'accountNumber' ? (value === '' ? null : Number(value)) : value;
+    const nextAccount = { ...newAccount, [name]: parsedValue };
 
-    if (accounts.some((account: FirestoreAccount) => account.accountName.trim().toLocaleLowerCase() === nextAccount.accountName.trim().toLowerCase()
-      || account.accountNumber === nextAccount.accountNumber)) {
-      setErrors({ ...errors, accountErrors: "Account already exists" })
-      return
+    const nextErrors = { ...errors };
+
+    nextErrors.accountErrors = accounts.some((account: FirestoreAccount) =>
+      account.accountName.trim().toLocaleLowerCase() === nextAccount.accountName.trim().toLowerCase()
+    ) ? "Account already exists" : '';
+
+    if (nextAccount.type && nextAccount.accountNumber) {
+      // Range first: an account number outside its type's allotted range can't
+      // be a real duplicate, since every existing account is already in-range.
+      if (!isAccountNumberInRange(nextAccount.type, nextAccount.subType, nextAccount.accountNumber)) {
+        const [min, max] = getAccountNumberRange(nextAccount.type, nextAccount.subType) || [0, 0];
+        nextErrors.accountNumber = `Account number must be between ${min} and ${max} for this account type`;
+      } else {
+        const numberExists = accounts.some((account: FirestoreAccount) =>
+          account.type === nextAccount.type
+          && account.subType === nextAccount.subType
+          && Number(account.accountNumber) === Number(nextAccount.accountNumber)
+        );
+        nextErrors.accountNumber = numberExists ? 'An account with this number already exists' : '';
+      }
     } else {
-      setErrors({ ...errors, accountErrors: '' })
+      nextErrors.accountNumber = '';
     }
 
-    if (nextAccount.type && nextAccount.accountNumber && !isAccountNumberInRange(nextAccount.type, nextAccount.subType, nextAccount.accountNumber)) {
-      const [min, max] = getAccountNumberRange(nextAccount.type, nextAccount.subType) || [0, 0];
-      setErrors({ ...errors, accountNumber: `Account number must be between ${min} and ${max} for this account type` })
-    } else {
-      setErrors({ ...errors, accountNumber: '' })
-    }
-
+    setErrors(nextErrors);
     setNewAccount(nextAccount);
   };
 
@@ -294,6 +305,14 @@ const PageTransactions: React.FC = () => {
       if (!isAccountNumberInRange(newAccount.type, newAccount.subType, newAccount.accountNumber)) {
         const [min, max] = getAccountNumberRange(newAccount.type, newAccount.subType) || [0, 0];
         setErrors({ ...errors, accountNumber: `Account number must be between ${min} and ${max} for this account type` })
+        return
+      }
+      if (accounts.some((account: FirestoreAccount) =>
+        account.type === newAccount.type
+        && account.subType === newAccount.subType
+        && Number(account.accountNumber) === Number(newAccount.accountNumber)
+      )) {
+        setErrors({ ...errors, accountNumber: 'An account with this number already exists' })
         return
       }
       const accountData: FirestoreAccount = {
