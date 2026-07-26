@@ -115,7 +115,13 @@ export const calculateAccountTotals = (transactions: FirestoreTransaction[], cur
     // if (i > 0) { l.runningTotals = { ...runningTotals } }
     // for each ledger grab transactions and accumulate totals
     const currentTransactions = transactions.filter(t => t.ledgerId === l.id)
-    const currentLedgerUpdates: Update = { transactions: currentTransactions, fileId: l.fileId, 'E': [], 'NE': [], 'D': [], 'ND': [], lastDTotal, lastNDTotal, lastTotal }
+    // The Ledger sheet's account-number column (J) needs each transaction's account
+    // number, which lives on the Account, not the transaction (see findAccountById).
+    const transactionsWithAccountNumber = currentTransactions.map(t => ({
+      ...t,
+      accountNumber: findAccountById(accounts, t.accountId)?.accountNumber ?? null,
+    }))
+    const currentLedgerUpdates: Update = { transactions: transactionsWithAccountNumber, fileId: l.fileId, 'E': [], 'NE': [], 'D': [], 'ND': [], lastDTotal, lastNDTotal, lastTotal }
     // Deposits/Non-Income Deposits list this ledger's own transactions chronologically,
     // rather than grouping by account like Expenses/Non-Deductible Expenses do.
     const depositItems: DepositUpdateItem[] = []

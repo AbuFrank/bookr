@@ -22,7 +22,7 @@ npm run test:watch    # vitest watch mode
 
 ### Tests
 
-Vitest, configured in `vite.config.ts` (`test.include`: `src/**/*.test.{ts,tsx}`, `server/**/*.test.js`, `api/**/*.test.js`). 100 tests across 12 files as of this writing — reducers, `helpers/{ledger,folders,date,transactions}`, `lib/firestore`, `types/spreadsheetTypes`, `server/google-auth`, and `api/routeParity.test.js`. That last one drives both `server/googleDriveRoutes.js` and the matching `api/*.js` handler with the same mocked `server/google-auth.js` and asserts identical status codes/bodies — it's the guardrail for the "keep both call sites in sync" rule below, so a signature or error-handling change to one side that isn't mirrored on the other will fail it.
+Vitest, configured in `vite.config.ts` (`test.include`: `src/**/*.test.{ts,tsx}`, `server/**/*.test.js`, `api/**/*.test.js`). 105 tests across 12 files as of this writing — reducers, `helpers/{ledger,folders,date,transactions}`, `lib/firestore`, `types/spreadsheetTypes`, `server/google-auth`, and `api/routeParity.test.js`. That last one drives both `server/googleDriveRoutes.js` and the matching `api/*.js` handler with the same mocked `server/google-auth.js` and asserts identical status codes/bodies — it's the guardrail for the "keep both call sites in sync" rule below, so a signature or error-handling change to one side that isn't mirrored on the other will fail it.
 
 ### Local server setup
 
@@ -44,6 +44,8 @@ Firestore-backed entities, all scoped by `userId`:
 All app state lives in `context/authContext.tsx` (`AuthProvider`), composed from four `useReducer` stores (`reducer/{transaction,account,ledger,folder}Reducer.tsx`), each with its own Action-type enum in the matching `types/*.ts` file. On Firebase auth state change, transactions/accounts/ledgers/folders are all loaded in parallel and dispatched into their reducers. There is no other global state — components read everything through `hooks/useAuth.ts`.
 
 `updateBooks(groupFolder, yearFolder)` is the pivot when switching book/fiscal year: it filters accounts by `bookId` and ledgers by `parentFolderId`, then sets the most-recently-created ledger in that year as `currentLedger`.
+
+The account and ledger reducers each keep a full list (`accounts`/`ledgers`) plus a book/year-scoped "current" list (`currentAccounts`/`currentLedgers`) that `updateBooks` derives from the full list — but the reducers themselves only ever touch the full list on add/update/delete, so every mutating action in `authContext.tsx` (`addAccount`/`updateAccount`/`deleteAccount`, `addLedger`/`updateLedger`) has to separately dispatch a `SET_CURRENT_*` update, or the change won't show up anywhere in the UI until the next book/year switch. Folders are the exception — `folderReducer.tsx` updates `currentChildren` inside the reducer itself. Transactions don't need this at all: `currentTransactions` is derived by a `useEffect` keyed off `ledgerState.currentLedger`, so it re-syncs automatically.
 
 Pages: `PageBooks.tsx` (create/select book + fiscal year, creates the Drive folder chain) and `PageTransactions.tsx` (ledger + transaction CRUD, gated by `ProtectedRoute` requiring a `currentFiscalYear`/`currentBook`).
 
@@ -78,6 +80,7 @@ Firebase Google Sign-In (`firebase/authService.ts`, `firebase/firebase.ts`). The
 - Ledger/ledger-total recalculation re-walks every ledger in a fiscal year on every sync; there's no persisted running total on the ledger doc yet (see the `TODO`s in `calculateAccountTotals`, `helpers/ledger.ts`).
 - `updateSpreadsheet` (`server/google-auth.js`) swallows its own errors (`catch` logs and returns `undefined` instead of rethrowing), so a failed sheet write shows up as `{ success: false, data: undefined }` in the `/update-sheets` response rather than an HTTP error — callers must check `success` per-index, not just the overall request status.
 - `notes.txt` is the running scratch todo list (`+` = done, `-` = open) plus open questions from the user about spreadsheet layout; check it before starting new ledger/UI work, and update it (don't just leave stale `-` items) as todos are completed.
+- When writing a cell that a sheet formula compares numerically (e.g. an `IFS` branching on `<`/`>`), write `numberValue`, not `stringValue` — Google Sheets treats text as always greater than any number in comparisons, so a numeric-looking string (like an account number) can silently break formulas that expect to branch on its numeric range.
 
 ## History
 

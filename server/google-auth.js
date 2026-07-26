@@ -188,13 +188,12 @@ const MaxND = 7;
 
 const ledgerStartRow = 5;
 
-// Function to format the date as mm/dd/yy
+// Function to format the date as mm/dd
 function formatDate(date) {
   console.log('DATE!!! >>>>> ', date)
   const month = (date.getMonth() + 1).toString().padStart(2, '0');
   const day = date.getDate().toString().padStart(2, '0');
-  const year = date.getFullYear().toString().slice(-2); // Get last two digits of year
-  return `${month}/${day}/${year}`;
+  return `${month}/${day}`;
 }
 // Function to convert Firestore timestamp to JS Date
 function convertFirestoreTimestamp(firestoreTimestamp) {
@@ -282,7 +281,7 @@ export async function updateSpreadsheet(spreadsheetId, transactions, allUpdates)
                 },
                 {
                   userEnteredValue: {
-                    stringValue: transaction.checkNo ? transaction.checkNo.toString() : ''
+                    stringValue: transaction.checkNumber ? transaction.checkNumber.toString() : ''
                   }
                 },
                 {
@@ -321,9 +320,9 @@ export async function updateSpreadsheet(spreadsheetId, transactions, allUpdates)
                   }
                 },
                 {
-                  userEnteredValue: {
-                    stringValue: transaction.accountNumber ? transaction.accountNumber.toString() : ''
-                  }
+                  userEnteredValue: transaction.accountNumber
+                    ? { numberValue: Number(transaction.accountNumber) }
+                    : { stringValue: '' }
                 },
                 {
                   userEnteredValue: {
@@ -457,13 +456,14 @@ export async function updateSpreadsheet(spreadsheetId, transactions, allUpdates)
       const maxRows = type === 'E' ? MaxE : MaxNE
       const maxAccountNumber = cellLocation.accountNumberStart + maxRows - 1
 
-      items.forEach(({ accountName, accountNumber, value, previousTotal }) => {
+      items.forEach(({ accountName, accountNumber: rawAccountNumber, value, previousTotal }) => {
+        const accountNumber = Number(rawAccountNumber)
         if (
-          typeof accountNumber !== 'number' ||
+          Number.isNaN(accountNumber) ||
           accountNumber < cellLocation.accountNumberStart ||
           accountNumber > maxAccountNumber
         ) {
-          console.log(`[updateSpreadsheet] skipping ${type} account "${accountName}" - accountNumber ${accountNumber} is out of range`)
+          console.log(`[updateSpreadsheet] skipping ${type} account "${accountName}" - accountNumber ${rawAccountNumber} is out of range`)
           return
         }
 

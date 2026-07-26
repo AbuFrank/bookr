@@ -1,5 +1,14 @@
 # Changelog
 
+## July 25, 2026
+
+- Fix the Account Summary sheet silently skipping every Expense/Non-Deductible-Expense account whose `accountNumber` was stored as a string in Firestore (accounts created before the July 21 account-number fix)
+- Fix the Ledger sheet's check-number column (B) always writing blank — it read a `checkNo` field that never existed on `FirestoreTransaction` (`checkNumber` is the real field)
+- Populate the Ledger sheet's account-number column (J) with each transaction's actual account number, resolved via the account instead of a nonexistent field on the transaction
+- Write the Ledger sheet's account-number column as a real number instead of text, fixing spreadsheet formulas (e.g. the running balance `IFS`) that branch on it numerically — Sheets treats numeric-looking text as always greater than any number in comparisons
+- Shorten Ledger/Account Summary date cells from `mm/dd/yy` to `mm/dd`
+- Fix newly created/edited/deleted accounts not appearing in the account dropdown until switching books or reloading — `currentAccounts` wasn't being kept in sync with `accounts` on account CRUD (the same fix already existed for ledgers)
+
 ## July 21, 2026
 
 - Add `firestore.rules` (userId-scoped read/write/create/update per collection, ownership can't be reassigned on update) — the previous rules allowed anyone with the project ref to read/write and were set to expire 2026-08-01; needs to be pasted into the Firebase console manually

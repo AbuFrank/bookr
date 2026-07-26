@@ -225,8 +225,8 @@ describe('updateSpreadsheet', () => {
     spreadsheetsBatchUpdate.mockResolvedValue({ status: 200, data: {} });
 
     const transactions = [
-      { date: { seconds: Math.floor(new Date(2024, 2, 1).getTime() / 1000) }, checkNo: '101', paidTo: 'Vendor A', accountNumber: 12, value: 45 },
-      { date: { seconds: Math.floor(new Date(2024, 2, 8).getTime() / 1000) }, checkNo: '', paidTo: 'Vendor B', accountNumber: 34, value: 60 },
+      { date: { seconds: Math.floor(new Date(2024, 2, 1).getTime() / 1000) }, checkNumber: '101', paidTo: 'Vendor A', accountNumber: 12, value: 45 },
+      { date: { seconds: Math.floor(new Date(2024, 2, 8).getTime() / 1000) }, checkNumber: '', paidTo: 'Vendor B', accountNumber: 34, value: 60 },
     ];
 
     const allUpdates = {
@@ -259,7 +259,7 @@ describe('updateSpreadsheet', () => {
           range: { sheetId: 111, startRowIndex: 4, endRowIndex: 5, startColumnIndex: 0, endColumnIndex: 11 },
           rows: [{
             values: [
-              { userEnteredValue: { stringValue: '03/01/24' } },
+              { userEnteredValue: { stringValue: '03/01' } },
               { userEnteredValue: { stringValue: '101' } },
               { userEnteredValue: { stringValue: 'Vendor A' } },
               { userEnteredValue: { stringValue: '' } },
@@ -268,7 +268,7 @@ describe('updateSpreadsheet', () => {
               { userEnteredValue: { stringValue: '' } },
               { userEnteredValue: { stringValue: '' } },
               { userEnteredValue: { stringValue: '' } },
-              { userEnteredValue: { stringValue: '12' } },
+              { userEnteredValue: { numberValue: 12 } },
               { userEnteredValue: { numberValue: 45 } },
             ],
           }],
@@ -280,7 +280,7 @@ describe('updateSpreadsheet', () => {
           range: { sheetId: 111, startRowIndex: 5, endRowIndex: 6, startColumnIndex: 0, endColumnIndex: 11 },
           rows: [{
             values: [
-              { userEnteredValue: { stringValue: '03/08/24' } },
+              { userEnteredValue: { stringValue: '03/08' } },
               { userEnteredValue: { stringValue: '' } },
               { userEnteredValue: { stringValue: 'Vendor B' } },
               { userEnteredValue: { stringValue: '' } },
@@ -289,7 +289,7 @@ describe('updateSpreadsheet', () => {
               { userEnteredValue: { stringValue: '' } },
               { userEnteredValue: { stringValue: '' } },
               { userEnteredValue: { stringValue: '' } },
-              { userEnteredValue: { stringValue: '34' } },
+              { userEnteredValue: { numberValue: 34 } },
               { userEnteredValue: { numberValue: 60 } },
             ],
           }],
@@ -315,7 +315,7 @@ describe('updateSpreadsheet', () => {
       {
         updateCells: {
           range: { sheetId: 222, startRowIndex: 5, endRowIndex: 6, startColumnIndex: 0, endColumnIndex: 1 },
-          rows: [{ values: [{ userEnteredValue: { stringValue: '03/08/24' } }] }],
+          rows: [{ values: [{ userEnteredValue: { stringValue: '03/08' } }] }],
           fields: 'userEnteredValue',
         },
       },
@@ -433,6 +433,28 @@ describe('updateSpreadsheet', () => {
     const serialized = JSON.stringify(requestBody.requests);
     expect(serialized).not.toContain('Too High');
     expect(serialized).not.toContain('Too Low');
+  });
+
+  it('still writes expense accounts whose accountNumber is a numeric string (legacy Firestore data)', async () => {
+    spreadsheetsGet.mockResolvedValue(twoSheets);
+    spreadsheetsBatchUpdate.mockResolvedValue({ status: 200, data: {} });
+
+    await googleAuth.updateSpreadsheet('sheet-id', [], {
+      lastDTotal: 0,
+      lastNDTotal: 0,
+      lastTotal: 0,
+      E: [{ accountName: 'Vehicle', accountNumber: '12', value: 45, previousTotal: 100 }],
+      NE: [{ accountName: 'Groceries', accountNumber: '75', value: 58, previousTotal: 380 }],
+      D: [],
+      ND: [],
+    });
+
+    const [{ requestBody }] = spreadsheetsBatchUpdate.mock.calls[0];
+    // lastTotal + lastDTotal + lastNDTotal + 2 accounts * 3 requests/account (name + value + previousTotal)
+    expect(requestBody.requests).toHaveLength(3 + 2 * 3);
+    const serialized = JSON.stringify(requestBody.requests);
+    expect(serialized).toContain('Vehicle');
+    expect(serialized).toContain('75 - Groceries');
   });
 
   it('swallows errors from the Sheets API instead of throwing', async () => {

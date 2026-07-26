@@ -269,6 +269,25 @@ describe('calculateAccountTotals', () => {
     ]);
   });
 
+  it('enriches each returned transaction with its account number for the Ledger sheet', () => {
+    const { updates } = calculateAccountTotals(transactions, ledgerA, [ledgerA], accounts, fiscalYear);
+
+    expect(updates[0].transactions).toEqual([
+      { ...transactions[0], accountNumber: 3 },
+      { ...transactions[1], accountNumber: 12 },
+    ]);
+  });
+
+  it('sets accountNumber to null on a transaction whose account no longer exists', () => {
+    const withOrphanTransaction = [
+      makeTransaction({ id: 'txn-orphan', ledgerId: 'ledger-a', accountId: 'deleted-account', value: 9999 }),
+    ];
+
+    const { updates } = calculateAccountTotals(withOrphanTransaction, ledgerA, [ledgerA], accounts, fiscalYear);
+
+    expect(updates[0].transactions).toEqual([{ ...withOrphanTransaction[0], accountNumber: null }]);
+  });
+
   it('skips transactions referencing an account that no longer exists', () => {
     const withOrphanTransaction = [
       ...transactions,

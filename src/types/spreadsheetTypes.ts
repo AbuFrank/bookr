@@ -15,8 +15,12 @@ export type DepositUpdateItem = {
   amount: number;
 };
 
+// The Ledger sheet needs each transaction's account number for display, which
+// lives on the Account (see helpers/ledger.ts#findAccountById), not the transaction.
+export type LedgerTransactionRow = FirestoreTransaction & { accountNumber: number | null };
+
 export type Update = {
-  transactions: FirestoreTransaction[];
+  transactions: LedgerTransactionRow[];
   fileId: string;
   E: UpdateItem[];
   NE: UpdateItem[];

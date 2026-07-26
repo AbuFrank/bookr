@@ -173,6 +173,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setAccountsLoading(true)
     await createAccount(account);
     dispatchAccount({ type: AccountActions.ADD_ACCOUNT, payload: account });
+    // ADD_ACCOUNT only updates `accounts`; the book-scoped `currentAccounts` list
+    // (what forms actually read - see `accounts` below) needs its own refresh too,
+    // otherwise a newly created account doesn't appear until the next updateBooks() call.
+    if (account.bookId === folderState.currentBook?.id) {
+      dispatchAccount({
+        type: AccountActions.SET_CURRENT_ACCOUNTS,
+        payload: [...accountState.currentAccounts, account],
+      });
+    }
     setAccountsLoading(false)
   };
 
@@ -180,6 +189,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setAccountsLoading(true)
     await updateFirestoreAccount(updatedAccount);
     dispatchAccount({ type: AccountActions.UPDATE_ACCOUNT, payload: updatedAccount });
+    dispatchAccount({
+      type: AccountActions.SET_CURRENT_ACCOUNTS,
+      payload: accountState.currentAccounts.map((account: FirestoreAccount) => account.id === updatedAccount.id ? updatedAccount : account),
+    });
     setAccountsLoading(false)
   };
 
@@ -214,6 +227,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setAccountsLoading(true)
     await deleteFirestoreAccount(accountId)
     dispatchAccount({ type: AccountActions.DELETE_ACCOUNT, payload: accountId });
+    dispatchAccount({
+      type: AccountActions.SET_CURRENT_ACCOUNTS,
+      payload: accountState.currentAccounts.filter((account: FirestoreAccount) => account.id !== accountId),
+    });
     setAccountsLoading(false)
   };
 
