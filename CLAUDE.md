@@ -49,6 +49,8 @@ The account and ledger reducers each keep a full list (`accounts`/`ledgers`) plu
 
 Pages: `PageBooks.tsx` (create/select book + fiscal year, creates the Drive folder chain) and `PageTransactions.tsx` (ledger + transaction CRUD, gated by `ProtectedRoute` requiring a `currentFiscalYear`/`currentBook`).
 
+`hasUnsavedReportChanges` (also in `authContext.tsx`) tracks whether the Google Sheet report is stale relative to Firestore: `addTransaction`/`updateTransaction`/`deleteTransaction` set it `true`, and it's only cleared by `markReportSaved()`, which `ReportTrigger` calls after `/update-sheets` reports every ledger write succeeded (a partial failure leaves it `true`). It gates the "Update Report" button's disabled state, drives a `beforeunload` browser warning, and guards the Header's sign-out action with a confirm — so it has to actually reach `false` on a real successful sync, not just after the request completes.
+
 ### Google Sheets sync
 
 Firestore is the source of truth; the Sheet is a generated report kept in sync manually. `ReportTrigger` calls `helpers/ledger.ts#calculateAccountTotals`, which walks *all* ledgers in the current fiscal year in chronological order and returns per-ledger `Update` payloads from the *current* ledger forward, sent as one batch to `PUT /api/update-sheets` → `updateSpreadsheet` in `server/google-auth.js`, which writes fixed cell ranges (`cellLocations`) via `sheets.spreadsheets.batchUpdate`. The Account Summary sheet has two different write strategies depending on section, matching the physical template:

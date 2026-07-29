@@ -16,7 +16,6 @@ Contributors welcomed!
 ### - Transactions Page
 
 - create more robust error management and form requirements
-- add a isSynced state to the ledger when state changes (transaction and ledger info) that is remove when the update ledger button is pressed and hide button
 - move type to account instead?
 
 ### - Routing

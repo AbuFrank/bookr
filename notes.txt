@@ -11,11 +11,11 @@
 + Add account number column before account name in table (Acct #)
 + Sort table by date/time created
 + Reduce deductible expense to 49 and change non-deductible to 50-56
-- Show warning message when quitting to make sure “update report” is clicked
++ Show warning message when quitting to make sure "update report" is clicked
++ Track “update Report” state and change text so that it’s clear it has changed
 - Fix date not showing correctly
 - Force date if left empty
 - Add edit transaction functionality to edit date, memo
-- Track “update Report” state and change text so that it’s clear it has changed
 - Change “Add Transaction” / “Close Form” button to blue solid button
 - Change Deposit/Expense to buttons
 - Change Non-income/non-deductible to toggle switch UI

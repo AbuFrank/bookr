@@ -556,7 +556,7 @@ const PageTransactions: React.FC = () => {
 
                 <button
                   onClick={() => showTransactionForm ? setShowTransactionForm(false) : setShowTransactionForm(true)}
-                  className="bg-primary hover:bg-secondary px-4 py-2 rounded-lg flex items-center transition cursor-pointer"
+                  className="px-6 py-3 rounded-md font-medium bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200 flex items-center gap-2 cursor-pointer"
                 >
                   {
                     showTransactionForm
@@ -596,8 +596,9 @@ const PageTransactions: React.FC = () => {
 
         </div>
         {currentLedger && <div className="bg-white rounded-xl shadow-md p-6 mt-5">
-          <div className="mb-4">
-            <h2 className="text-xl font-bold text-gray-800">Ledger</h2>
+          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-4">
+            <h2 className="text-xl font-bold text-gray-800 pt-3">Ledger</h2>
+            <ReportTrigger />
           </div>
 
           <TransactionList
@@ -607,10 +608,6 @@ const PageTransactions: React.FC = () => {
             transactionsLoading={transactionsLoading}
           />
         </div>}
-
-        <div className="mt-8">
-          {currentLedger && <ReportTrigger />}
-        </div>
       </main>
     </div>
   );

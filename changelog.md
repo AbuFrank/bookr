@@ -3,6 +3,10 @@
 ## July 29, 2026
 
 - Re-range the Account Summary sheet's Expense/Non-Deductible-Expense accountNumber allotments to match the reworked template layout: Deductible Expenses now 1-49 (was 1-51), Non-Deductible Expenses now 50-56 (was 75-81, same physical rows)
+- Track unsaved report changes: adding, editing, or deleting a transaction now flags the report as out of sync (`hasUnsavedReportChanges` in `authContext.tsx`), cleared only once `/update-sheets` reports every ledger write succeeded. While there are unsaved changes, closing/refreshing the tab prompts a browser confirmation and signing out asks for confirmation; the "Update Report" button is disabled/grayed out except when there's actually something to sync, and shows an "Updating..." state while the request is in flight (previously `isProcessing` was set but never actually flipped to `true`, so that state never fired)
+- Fix `googleDriveAPI.updateSheetCells` discarding the `/update-sheets` response body entirely instead of parsing it — callers had no way to check per-ledger `success` at all
+- Move the "Update Report" button to the top-right of the Ledger/transactions table section (was floating at the bottom of the page), and restyle "Add Transaction"/"Close Form" to the same solid blue button used elsewhere instead of the old `bg-primary`/`bg-secondary` classes
+- Remove the raw JSON dump of the calculated update payload that `ReportTrigger` printed to the page on every sync
 
 ## July 28, 2026
 

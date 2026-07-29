@@ -39,6 +39,8 @@ interface AuthContextType {
   addTransaction: (transaction: FirestoreTransaction) => void;
   updateTransaction: (updatedTransaction: FirestoreTransaction) => void;
   deleteTransaction: (transactionId: string) => void;
+  hasUnsavedReportChanges: boolean;
+  markReportSaved: () => void;
   accounts: FirestoreAccount[];
   accountsLoading: boolean;
   addAccount: (acount: FirestoreAccount) => void;
@@ -75,6 +77,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [transactionsLoading, setTransactionsLoading] = useState<boolean>(false);
+  const [hasUnsavedReportChanges, setHasUnsavedReportChanges] = useState<boolean>(false);
   const [transactionState, dispatchTransaction] = useReducer(transactionReducer, { transactions: [], currentTransactions: [] });
   const [accountsLoading, setAccountsLoading] = useState<boolean>(false);
   const [accountState, dispatchAccount] = useReducer(accountReducer, { accounts: [], currentAccounts: [] })
@@ -151,6 +154,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setTransactionsLoading(true)
     await createTransaction(transaction);
     dispatchTransaction({ type: TransactionActions.ADD_TRANSACTION, payload: transaction });
+    setHasUnsavedReportChanges(true)
     setTransactionsLoading(false)
   };
 
@@ -158,6 +162,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setTransactionsLoading(true)
     await updateFirestoreTransaction(updatedTransaction);
     dispatchTransaction({ type: TransactionActions.UPDATE_TRANSACTION, payload: updatedTransaction });
+    setHasUnsavedReportChanges(true)
     setTransactionsLoading(false)
   };
 
@@ -166,7 +171,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     console.log('deleteTransaction running????????')
     await deleteFirestoreTransaction(transactionId)
     dispatchTransaction({ type: TransactionActions.DELETE_TRANSACTION, payload: transactionId });
+    setHasUnsavedReportChanges(true)
     setTransactionsLoading(false)
+  };
+
+  const markReportSaved = () => {
+    setHasUnsavedReportChanges(false)
   };
 
   const addAccount = async (account: FirestoreAccount) => {
@@ -319,6 +329,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       dispatchAccount({ type: AccountActions.RESET, payload: undefined });
       dispatchLedger({ type: LedgerActions.RESET, payload: undefined });
       dispatchFolder({ type: FolderActions.RESET, payload: undefined });
+      setHasUnsavedReportChanges(false);
 
       // Reset user and auth state
       setUser(null);
@@ -340,6 +351,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     addTransaction,
     updateTransaction,
     deleteTransaction,
+    hasUnsavedReportChanges,
+    markReportSaved,
     transactionsLoading,
     accounts: accountState.currentAccounts,
     accountsLoading,

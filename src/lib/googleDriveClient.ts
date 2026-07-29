@@ -168,8 +168,7 @@ const googleDriveAPI: GoogleDriveAPI = {
     }
   },
 
-  // async updateSheetCells(updates: Update[]): Promise<void> {
-  async updateSheetCells(updates): Promise<void> {
+  async updateSheetCells(updates: Update[]) {
     try {
 
 
@@ -192,8 +191,12 @@ const googleDriveAPI: GoogleDriveAPI = {
         })
       });
 
+      const results = await response.json();
+
       console.log('//////////////////')
-      console.log('updateSheetCells response ==> ', response)
+      console.log('updateSheetCells response ==> ', results)
+
+      return results;
     } catch (error) {
       console.error('Error updating spreadsheet:', error);
       throw error;

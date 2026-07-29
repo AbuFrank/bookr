@@ -5,7 +5,14 @@ const Header = () => {
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const { logout, user } = useAuth()
+  const { logout, user, hasUnsavedReportChanges } = useAuth()
+
+  const handleSignOut = () => {
+    if (hasUnsavedReportChanges && !window.confirm('You have unsaved changes to your report. Sign out anyway without clicking "Update Report"?')) {
+      return;
+    }
+    logout();
+  };
 
   // Handle clicks outside the dropdown
   useEffect(() => {
@@ -49,7 +56,7 @@ const Header = () => {
                   <p>{user?.email}</p>
                   <p>{user?.uid}</p>
                   <button
-                    onClick={logout}
+                    onClick={handleSignOut}
                     className="block py-2 text-sm text-blue-600 hover:bg-gray-100 w-full text-left"
                   >
                     Sign out
