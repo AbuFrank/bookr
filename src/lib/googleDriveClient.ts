@@ -16,7 +16,7 @@ interface GoogleDriveAPI {
   setCurrentUser: (user: User | null) => void;
   updateSheetCells: (updates: Update[]) => Promise<any>;
   // updateSheetCells: (transactions: FirestoreTransaction[], currentLedger: Ledger) => Promise<any>;
-  createFolder: (name: string, parentId: string) => Promise<Folder>;
+  createFolder: (name: string, parentId: string, startingBalance?: number | null) => Promise<Folder>;
   copyReportTemplate: (parentFolderId: string, fileName: string, description: string) => Promise<DriveFile>;
 }
 
@@ -38,7 +38,7 @@ const googleDriveAPI: GoogleDriveAPI = {
     currentUser = user
   },
 
-  async createFolder(name: string, parentId: string): Promise<Folder> {
+  async createFolder(name: string, parentId: string, startingBalance?: number | null): Promise<Folder> {
     if (!currentUser) {
       throw new Error('No authenticated user found');
     }
@@ -88,6 +88,7 @@ const googleDriveAPI: GoogleDriveAPI = {
         name: modifiedName,
         userId: currentUser.uid,
         parentId,
+        ...(startingBalance != null ? { startingBalance } : {}),
       }
       // Store the folder in Firestore
       createFirestoreFolder(folder)

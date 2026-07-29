@@ -1,5 +1,13 @@
 # Changelog
 
+## July 28, 2026
+
+- Fix the fiscal year's starting balance never reaching `currentFiscalYear` in app state or the Firestore folder doc — `googleDriveAPI.createFolder` persisted the new fiscal-year folder to Firestore before `startingBalance` was merged in, and `PageBooks.tsx` then called `setCurrentFiscalYear` with that unmerged copy instead of the one patched with the balance. `createFolder` now accepts an optional `startingBalance` and writes it at creation time, so the value is correct in-session and survives a reload.
+- Fix `updateFolder` (`authContext.tsx`) only updating in-memory folder state and never writing to Firestore, so any folder edit was silently lost on reload
+- Add an editable starting balance to the chronologically-first ledger's card (transactions page): shows `Starting balance: $X` with a pill-style Edit button that swaps in an inline input, so the fiscal year's starting balance can be corrected later without going into the Firestore console
+- Add an `Acct #` column (center-aligned) to the transactions table, showing each transaction's account number
+- Sort the transactions table and the Ledger sheet's register rows by transaction creation time ascending (oldest first) instead of whatever order Firestore happened to return
+
 ## July 25, 2026
 
 - Fix the Account Summary sheet silently skipping every Expense/Non-Deductible-Expense account whose `accountNumber` was stored as a string in Firestore (accounts created before the July 21 account-number fix)

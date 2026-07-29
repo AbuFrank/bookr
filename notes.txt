@@ -4,6 +4,24 @@
 1. Do you still want the running list to be included in the spreadsheet or is it okay just in the app (for printing purposes)
 1. [Resolved] Deposits/Non-Income Deposits list transactions chronologically (date/payee/amount), no account grouping. Expenses/Non-Deductible Expenses stay grouped by account, placed on a fixed row by accountNumber (Deductible: 1-51, Non-Deductible: 75-81).
 
+# Second session
+
++ Fix starting amount not showing in new ledger
++ Fix starting amount not showing on first ledger
++ Add account number column before account name in table (Acct #)
++ Sort table by date/time created
+- Reduce deductible expense to 49 and change non-deductible to 50-56
+- Show morning message when quitting to make sure “update report” is clicked
+- Fix date not showing correctly
+- Force date if left empty
+- Add edit transaction functionality to edit date, memo
+- Track “update Report” state and change text so that it’s clear it has changed
+- Change “Add Transaction” / “Close Form” button to blue solid button
+- Change Deposit/Expense to buttons
+- Change Non-income/non-deductible to toggle switch UI
+- Put “Update Report” and “Link to spreadsheet” above and below transaction form
+- Split ledger description cell into the “payment to/deposit from” and make second column “memo”
+
 
 # First session
 

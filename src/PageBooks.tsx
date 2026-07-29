@@ -150,10 +150,10 @@ const PageBooks = () => {
       }
 
       // Create the fiscal year folder
-      const yearFolder = await googleDriveAPI.createFolder(fiscalYear.trim(), groupFolder.id)
+      const yearFolder = await googleDriveAPI.createFolder(fiscalYear.trim(), groupFolder.id, parsedBalance)
 
       addFolder(groupFolder)
-      addFolder({ ...yearFolder, startingBalance: parsedBalance })
+      addFolder(yearFolder)
 
       // Set current group and year folders and navigate to /transactions
       setCurrentFiscalYear(yearFolder);

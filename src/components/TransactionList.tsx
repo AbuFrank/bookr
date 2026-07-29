@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import type { FirestoreTransaction } from '../types/transactionTypes';
 import { findAccountById } from '../lib/firestore';
 import type { FirestoreAccount } from '../types/accountTypes';
-import { formatFirestoreDate } from '../helpers/date';
+import { formatFirestoreDate, toComparableTime } from '../helpers/date';
 
 interface TransactionListProps {
   accounts: FirestoreAccount[]
@@ -18,6 +18,10 @@ const TransactionList: React.FC<TransactionListProps> = ({ accounts, transaction
       currency: 'USD'
     }).format(amount);
   };
+
+  const sortedTransactions = useMemo(() => (
+    [...transactions].sort((a, b) => toComparableTime(a.dateCreated) - toComparableTime(b.dateCreated))
+  ), [transactions]);
 
   if (transactions.length === 0) {
     return (
@@ -39,6 +43,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ accounts, transaction
             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Check No.</th>
             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment To / Deposit From</th>
+            <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Acct #</th>
             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Account</th>
             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
@@ -46,7 +51,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ accounts, transaction
           </tr>
         </thead>
         <tbody className="bg-white divide-y divide-gray-200">
-          {transactions.map((transaction) => {
+          {sortedTransactions.map((transaction) => {
             const account = findAccountById(accounts, transaction?.accountId);
             const transactionType = account?.type;
 
@@ -64,6 +69,9 @@ const TransactionList: React.FC<TransactionListProps> = ({ accounts, transaction
                   {transaction.memo && (
                     <div className="text-xs text-gray-400 mt-1">{transaction.memo}</div>
                   )}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-center">
+                  <div className="text-sm text-gray-500">{account?.accountNumber ?? ''}</div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm text-gray-500">{account?.accountName}</div>

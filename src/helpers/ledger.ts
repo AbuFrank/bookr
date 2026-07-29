@@ -113,8 +113,12 @@ export const calculateAccountTotals = (transactions: FirestoreTransaction[], cur
     console.log("currently looped ledger ==> ", l)
     // append running totals if not first ledger to record "total up to this week"
     // if (i > 0) { l.runningTotals = { ...runningTotals } }
-    // for each ledger grab transactions and accumulate totals
-    const currentTransactions = transactions.filter(t => t.ledgerId === l.id)
+    // for each ledger grab transactions and accumulate totals, oldest first, so the
+    // Ledger sheet's register rows (written in this order, see updateSpreadsheet) match
+    // the order entries were actually created rather than however Firestore returned them.
+    const currentTransactions = transactions
+      .filter(t => t.ledgerId === l.id)
+      .sort((a, b) => toComparableTime(a.dateCreated) - toComparableTime(b.dateCreated))
     // The Ledger sheet's account-number column (J) needs each transaction's account
     // number, which lives on the Account, not the transaction (see findAccountById).
     const transactionsWithAccountNumber = currentTransactions.map(t => ({

@@ -8,7 +8,7 @@ import {
 
 import { listenToAuthState } from '../firebase/firebase';
 import { transactionReducer } from '../reducer/transactionReducer';
-import { createAccount, createLedger, createTransaction, deleteFirestoreAccount, deleteFirestoreTransaction, loadAccounts, loadLedgers, loadTransactions, loadUserFolders, updateFirestoreAccount, updateFirestoreTransaction, updateLedger as updateFirestoreLedger } from '../firebase/crud';
+import { createAccount, createLedger, createTransaction, deleteFirestoreAccount, deleteFirestoreTransaction, loadAccounts, loadLedgers, loadTransactions, loadUserFolders, updateFirestoreAccount, updateFirestoreTransaction, updateFolder as updateFirestoreFolder, updateLedger as updateFirestoreLedger } from '../firebase/crud';
 import { TransactionActions, type FirestoreTransaction } from '../types/transactionTypes';
 import accountReducer from '../reducer/accountReducer';
 import { AccountActions, type FirestoreAccount } from '../types/accountTypes';
@@ -57,7 +57,7 @@ interface AuthContextType {
   currentFiscalYear: Folder | null;
   currentFolderChildren: Folder[];
   addFolder: (folder: Folder) => void;
-  updateFolder: (folder: Folder) => void;
+  updateFolder: (folder: Folder) => Promise<void>;
   deleteFolder: (folderId: string) => void;
   setCurrentFiscalYear: (folder: Folder) => void;
   setCurrentBook: (folder: Folder) => void;
@@ -237,7 +237,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const addFolder = (folder: Folder) => {
     dispatchFolder({ type: FolderActions.ADD_FOLDER, payload: folder });
   };
-  const updateFolder = (updatedFolder: Folder) => {
+  const updateFolder = async (updatedFolder: Folder) => {
+    await updateFirestoreFolder(updatedFolder);
     dispatchFolder({ type: FolderActions.UPDATE_FOLDER, payload: updatedFolder });
   };
   const deleteFolder = (folderId: string) => {

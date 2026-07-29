@@ -41,6 +41,9 @@ const PageTransactions: React.FC = () => {
   const [showLedgerForm, setShowLedgerForm] = useState(false);
   const [editingLedger, setEditingLedger] = useState<Ledger | null>(null);
 
+  const [isEditingStartingBalance, setIsEditingStartingBalance] = useState(false);
+  const [startingBalanceInput, setStartingBalanceInput] = useState('');
+
   const [newLedger, setNewLedger] = useState<FormLedgerData>({
     name: '',
     description: '',
@@ -64,6 +67,7 @@ const PageTransactions: React.FC = () => {
     ledgersLoading,
     addLedger,
     updateLedger,
+    updateFolder,
     currentLedger,
     currentLedgers,
     setCurrentLedger,
@@ -88,7 +92,24 @@ const PageTransactions: React.FC = () => {
     );
   }, [currentLedgers]);
 
+  // sortedLedgers is newest-first; the fiscal year's starting balance only ever
+  // seeds the chronologically-first ledger's running total (see calculateAccountTotals).
+  const firstLedger = sortedLedgers.length > 0 ? sortedLedgers[sortedLedgers.length - 1] : null;
+
   const ledgerLink = useMemo(() => currentLedger ? `https://docs.google.com/spreadsheets/d/${currentLedger.fileId}` : '', [currentLedger])
+
+  const handleStartingBalanceEditToggle = () => {
+    setStartingBalanceInput((currentFiscalYear?.startingBalance ?? 0).toString());
+    setIsEditingStartingBalance(true);
+  };
+
+  const handleStartingBalanceSave = async () => {
+    if (!currentFiscalYear) return;
+    const parsed = parseFloat(startingBalanceInput);
+    const startingBalance = isNaN(parsed) ? 0 : Number(parsed.toFixed(2));
+    await updateFolder({ ...currentFiscalYear, startingBalance });
+    setIsEditingStartingBalance(false);
+  };
 
   /*
    * New Ledger Form
@@ -408,11 +429,17 @@ const PageTransactions: React.FC = () => {
                 ) : (
                   sortedLedgers.map((ledger) => {
                     const isSelected = currentLedger?.id === ledger.id;
+                    const isFirstLedger = ledger.id === firstLedger?.id;
 
                     return (
-                      <button
+                      <div
                         key={ledger.id}
+                        role="button"
+                        tabIndex={0}
                         onClick={() => setCurrentLedger(ledger)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') setCurrentLedger(ledger);
+                        }}
                         className={`w-full text-left rounded-lg border p-4 transition cursor-pointer ${isSelected
                           ? 'border-primary bg-blue-50'
                           : 'border-gray-200 hover:bg-gray-50'
@@ -425,7 +452,49 @@ const PageTransactions: React.FC = () => {
                         <div className="text-xs text-gray-400 mt-2">
                           Created {new Date(ledger.dateCreated).toLocaleDateString()}
                         </div>
-                      </button>
+                        {isFirstLedger && (
+                          <div className="text-xs text-gray-500 mt-2" onClick={(e) => e.stopPropagation()}>
+                            {isEditingStartingBalance ? (
+                              <div className="flex items-center gap-1">
+                                <span>Starting balance: $</span>
+                                <input
+                                  type="text"
+                                  inputMode="decimal"
+                                  autoFocus
+                                  value={startingBalanceInput}
+                                  onChange={(e) => setStartingBalanceInput(e.target.value)}
+                                  className="w-20 rounded border border-gray-300 px-1 py-0.5"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={handleStartingBalanceSave}
+                                  className="text-blue-500 hover:text-blue-700 hover:underline"
+                                >
+                                  Save
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setIsEditingStartingBalance(false)}
+                                  className="text-gray-400 hover:text-gray-600 hover:underline"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            ) : (
+                              <span>
+                                Starting balance: ${(currentFiscalYear?.startingBalance ?? 0).toFixed(2)}{' '}
+                                <button
+                                  type="button"
+                                  onClick={handleStartingBalanceEditToggle}
+                                  className="inline-flex items-center rounded-full border border-gray-300 bg-white px-2.5 py-0.5 text-xs font-medium text-black hover:bg-gray-50"
+                                >
+                                  Edit
+                                </button>
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     );
                   })
                 )}
