@@ -4,6 +4,7 @@ import StatCards from './components/StatCards';
 import FormTransaction from './components/FormTransaction';
 import TransactionList from './components/TransactionList';
 import { useAuth } from './hooks/useAuth';
+import { useData } from './hooks/useData';
 import type { FirestoreAccount, FormAccountData } from './types/accountTypes';
 import type { EditTransactionFormData, FirestoreTransaction } from './types/transactionTypes';
 import { findAccountById, generateFirestoreId } from './lib/firestore';
@@ -61,8 +62,8 @@ const PageTransactions: React.FC = () => {
     // startingBalance: '',
   });
 
+  const { user } = useAuth();
   const {
-    user,
     accounts,
     transactions,
     currentTransactions,
@@ -70,7 +71,7 @@ const PageTransactions: React.FC = () => {
     updateTransaction,
     deleteTransaction,
     addAccount,
-    loading,
+    dataLoading,
     transactionsLoading,
     accountsLoading,
     currentFiscalYear,
@@ -82,7 +83,7 @@ const PageTransactions: React.FC = () => {
     currentLedger,
     currentLedgers,
     setCurrentLedger,
-  } = useAuth();
+  } = useData();
 
   const paidToOptions = useMemo(() => getDistinctPaidTo(transactions), [transactions]);
 
@@ -90,10 +91,10 @@ const PageTransactions: React.FC = () => {
 
   useEffect(() => {
     // Navigate to books if no current year or book
-    if (!loading && !(currentFiscalYear?.id && currentBook)) {
+    if (!dataLoading && !(currentFiscalYear?.id && currentBook)) {
       navigate('/books')
     }
-  }, [loading, currentFiscalYear, currentBook, navigate])
+  }, [dataLoading, currentFiscalYear, currentBook, navigate])
 
 
   const sortedLedgers = useMemo(() => {
@@ -410,7 +411,7 @@ const PageTransactions: React.FC = () => {
     }
   };
 
-  if (loading) {
+  if (dataLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>

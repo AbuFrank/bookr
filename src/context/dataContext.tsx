@@ -1,12 +1,5 @@
-import { createContext, useState, useEffect, useReducer } from 'react';
+import { createContext, useState, useEffect, useReducer, useContext } from 'react';
 import type { ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
-import {
-  signInWithGoogle,
-  signOutUser,
-} from '../firebase/authService';
-
-import { listenToAuthState } from '../firebase/firebase';
 import { transactionReducer } from '../reducer/transactionReducer';
 import { createAccount, createLedger, createTransaction, deleteFirestoreAccount, deleteFirestoreTransaction, loadAccounts, loadLedgers, loadTransactions, loadUserFolders, updateFirestoreAccount, updateFirestoreTransaction, updateFolder as updateFirestoreFolder, updateLedger as updateFirestoreLedger } from '../firebase/crud';
 import { TransactionActions, type FirestoreTransaction } from '../types/transactionTypes';
@@ -17,22 +10,10 @@ import { FolderActions, type Folder } from '../types/folderTypes';
 import folderReducer from '../reducer/folderReducer';
 import { LedgerActions, type LedgerInput, type Ledger } from '../types/ledgerTypes';
 import ledgerReducer from '../reducer/ledgerReducer';
+import { SessionContext } from './sessionContext';
 
-interface User {
-  uid: string;
-  email: string | null;
-  displayName: string | null;
-  photoURL: string | null;
-  emailVerified: boolean;
-  providerId: string;
-}
-
-interface AuthContextType {
-  user: User | null;
-  isAuthenticated: boolean;
-  loading: boolean;
-  loginWithGoogle: () => Promise<void>;
-  logout: () => Promise<void>;
+interface DataContextType {
+  dataLoading: boolean;
   transactionsLoading: boolean;
   transactions: FirestoreTransaction[];
   currentTransactions: FirestoreTransaction[];
@@ -66,16 +47,20 @@ interface AuthContextType {
   setFolders: (folders: Folder[]) => void;
 }
 
-export const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const DataContext = createContext<DataContextType | undefined>(undefined);
 
-interface AuthProviderProps {
+interface DataProviderProps {
   children: ReactNode;
 }
 
-export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [loading, setLoading] = useState<boolean>(true);
+export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
+  const sessionContext = useContext(SessionContext);
+  if (!sessionContext) {
+    throw new Error('DataProvider must be used within a SessionProvider');
+  }
+  const { user } = sessionContext;
+
+  const [dataLoading, setDataLoading] = useState<boolean>(true);
   const [transactionsLoading, setTransactionsLoading] = useState<boolean>(false);
   const [hasUnsavedReportChanges, setHasUnsavedReportChanges] = useState<boolean>(false);
   const [transactionState, dispatchTransaction] = useReducer(transactionReducer, { transactions: [], currentTransactions: [] });
@@ -94,54 +79,37 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     currentBook: null,
   });
 
-  const navigate = useNavigate();
-
+  // Load Firestore data whenever the signed-in user changes; reset all state on sign-out.
   useEffect(() => {
-    const unsubscribe = listenToAuthState((firebaseUser) => {
-      if (firebaseUser) {
-        // User is signed in
-        googleDriveAPI.setCurrentUser(firebaseUser);
-        setUser({
-          uid: firebaseUser.uid,
-          email: firebaseUser.email,
-          displayName: firebaseUser.displayName,
-          photoURL: firebaseUser.photoURL,
-          emailVerified: firebaseUser.emailVerified,
-          providerId: firebaseUser.providerId
-        });
-        setIsAuthenticated(true);
+    if (!user) {
+      dispatchTransaction({ type: TransactionActions.RESET, payload: undefined });
+      dispatchAccount({ type: AccountActions.RESET, payload: undefined });
+      dispatchLedger({ type: LedgerActions.RESET, payload: undefined });
+      dispatchFolder({ type: FolderActions.RESET, payload: undefined });
+      setHasUnsavedReportChanges(false);
+      setDataLoading(false);
+      return;
+    }
 
-
-        try {
-          // Load user data
-          Promise.all([
-            loadTransactions(firebaseUser.uid),
-            loadAccounts(firebaseUser.uid),
-            loadLedgers(firebaseUser.uid),
-            loadUserFolders(firebaseUser.uid),
-          ])
-            .then(([initialTransactions, initialAccounts, initialLedgers, initialFolders]) => {
-              dispatchTransaction({ type: TransactionActions.SET_TRANSACTIONS, payload: initialTransactions })
-              dispatchAccount({ type: AccountActions.SET_ACCOUNTS, payload: initialAccounts })
-              dispatchLedger({ type: LedgerActions.SET_LEDGERS, payload: initialLedgers })
-              dispatchFolder({ type: FolderActions.SET_FOLDERS, payload: initialFolders })
-              setLoading(false);
-            })
-        } catch (error) {
-          console.error('Error during login flow:', error);
-          setLoading(false);
-        }
-      } else {
-        // User is signed out
-        googleDriveAPI.setCurrentUser(null);
-        setUser(null);
-        setIsAuthenticated(false);
-        setLoading(false);
-      }
-    });
-
-    return unsubscribe;
-  }, []);
+    setDataLoading(true);
+    Promise.all([
+      loadTransactions(user.uid),
+      loadAccounts(user.uid),
+      loadLedgers(user.uid),
+      loadUserFolders(user.uid),
+    ])
+      .then(([initialTransactions, initialAccounts, initialLedgers, initialFolders]) => {
+        dispatchTransaction({ type: TransactionActions.SET_TRANSACTIONS, payload: initialTransactions })
+        dispatchAccount({ type: AccountActions.SET_ACCOUNTS, payload: initialAccounts })
+        dispatchLedger({ type: LedgerActions.SET_LEDGERS, payload: initialLedgers })
+        dispatchFolder({ type: FolderActions.SET_FOLDERS, payload: initialFolders })
+        setDataLoading(false);
+      })
+      .catch((error) => {
+        console.error('Error loading user data:', error);
+        setDataLoading(false);
+      });
+  }, [user])
 
   useEffect(() => {
     const currentLedgerTransactions = transactionState.transactions.filter(t => t.ledgerId === ledgerState.currentLedger?.id)
@@ -305,41 +273,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     dispatchLedger({ type: LedgerActions.SET_CURRENT_LEDGER, payload: ledger });
   };
 
-
-  const loginWithGoogle = async (): Promise<void> => {
-    try {
-      await signInWithGoogle();
-      // Auth state listener will handle the user update
-    } catch (error: any) {
-      throw new Error(error.message || 'Google login failed');
-    }
-  };
-
-  const logout = async (): Promise<void> => {
-    try {
-      await signOutUser();
-      // Reset all state to initial values
-      dispatchTransaction({ type: TransactionActions.RESET, payload: undefined });
-      dispatchAccount({ type: AccountActions.RESET, payload: undefined });
-      dispatchLedger({ type: LedgerActions.RESET, payload: undefined });
-      dispatchFolder({ type: FolderActions.RESET, payload: undefined });
-      setHasUnsavedReportChanges(false);
-
-      // Reset user and auth state
-      setUser(null);
-      setIsAuthenticated(false);
-      navigate('/login');
-    } catch (error: any) {
-      throw new Error(error.message || 'Logout failed');
-    }
-  };
-
-  const value: AuthContextType = {
-    user,
-    isAuthenticated,
-    loading,
-    loginWithGoogle,
-    logout,
+  const value: DataContextType = {
+    dataLoading,
     transactions: transactionState.transactions,
     currentTransactions: transactionState.currentTransactions,
     addTransaction,
@@ -374,8 +309,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={value}>
+    <DataContext.Provider value={value}>
       {children}
-    </AuthContext.Provider>
+    </DataContext.Provider>
   );
 };

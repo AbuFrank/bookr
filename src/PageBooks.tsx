@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
+import { useData } from './hooks/useData';
 import googleDriveAPI from './lib/googleDriveClient';
 import { sortFoldersIntoTree } from './helpers/folders';
 import FolderTree from './components/FolderTree';
@@ -21,14 +22,14 @@ const PageBooks = () => {
   const [startingBalance, setStartingBalance] = useState<string>('')
   const navigate = useNavigate();
 
+  const { user } = useAuth();
   const {
-    user,
     folders,
     addFolder,
     setCurrentFiscalYear,
     setCurrentBook,
     updateBooks
-  } = useAuth();
+  } = useData();
 
   // Update folder structure whenever folders change
   useEffect(() => {

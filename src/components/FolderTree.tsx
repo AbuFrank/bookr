@@ -1,5 +1,5 @@
 import React from 'react';
-import { useAuth } from '../hooks/useAuth';
+import { useData } from '../hooks/useData';
 import { useNavigate } from 'react-router-dom';
 import type { Folder, FolderNode } from '../types/folderTypes';
 
@@ -15,7 +15,7 @@ const FolderTree: React.FC<FolderTreeProps> = ({ folders, className = '' }) => {
     setCurrentFiscalYear,
     setCurrentBook,
     updateBooks,
-  } = useAuth();
+  } = useData();
 
 
   const navigate = useNavigate();

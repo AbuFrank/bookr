@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { useData } from '../hooks/useData';
 
 const Header = () => {
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const { logout, user, hasUnsavedReportChanges } = useAuth()
+  const { logout, user } = useAuth()
+  const { hasUnsavedReportChanges } = useData()
 
   const handleSignOut = () => {
     if (hasUnsavedReportChanges && !window.confirm('You have unsaved changes to your report. Sign out anyway without clicking "Update Report"?')) {

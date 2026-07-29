@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { useData } from '../hooks/useData';
 import googleDriveAPI from '../lib/googleDriveClient';
 import { calculateAccountTotals } from '../helpers/ledger';
 
 const ReportTrigger: React.FC = () => {
-  const { accounts, user, isAuthenticated, transactions, currentFiscalYear, currentLedger, currentLedgers, hasUnsavedReportChanges, markReportSaved } = useAuth();
+  const { user, isAuthenticated } = useAuth();
+  const { accounts, transactions, currentFiscalYear, currentLedger, currentLedgers, hasUnsavedReportChanges, markReportSaved } = useData();
   const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
