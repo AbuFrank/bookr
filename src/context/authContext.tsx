@@ -144,9 +144,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   useEffect(() => {
-    console.log('current Ledger ==> ', ledgerState.currentLedger)
     const currentLedgerTransactions = transactionState.transactions.filter(t => t.ledgerId === ledgerState.currentLedger?.id)
-    console.log('current transactions??? ', currentLedgerTransactions.length)
     dispatchTransaction({ type: TransactionActions.SET_CURRENT_TRANSACTIONS, payload: currentLedgerTransactions })
   }, [transactionState.transactions, ledgerState.currentLedger])
 
@@ -168,7 +166,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const deleteTransaction = async (transactionId: string) => {
     setTransactionsLoading(true)
-    console.log('deleteTransaction running????????')
     await deleteFirestoreTransaction(transactionId)
     dispatchTransaction({ type: TransactionActions.DELETE_TRANSACTION, payload: transactionId });
     setHasUnsavedReportChanges(true)
@@ -209,18 +206,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const updateBooks = async (groupFolder: Folder, yearFolder: Folder) => {
     // Set current accounts based on current book
     const bookAccounts = accountState.accounts.filter((account: FirestoreAccount) => account.bookId === groupFolder.id)
-    console.log("have bookAccounts ==> ", bookAccounts)
     dispatchAccount({ type: AccountActions.SET_CURRENT_ACCOUNTS, payload: bookAccounts })
 
     // Set current ledger to most recent by default
     const fiscalYearLedgers = ledgerState.ledgers.filter(ledger => ledger.parentFolderId === yearFolder.id)
 
     if (fiscalYearLedgers.length > 0) {
-      console.log('have ledgers')
       const dateDescendingLedgers = fiscalYearLedgers.sort(
         (a, b) => new Date(b.dateCreated).getTime() - new Date(a.dateCreated).getTime()
       )
-      console.log("current ledgers ==> ", dateDescendingLedgers)
       dispatchLedger({ type: LedgerActions.SET_CURRENT_LEDGERS, payload: dateDescendingLedgers })
       // Set first ledger in list as current ledger
       const currentLedger = dateDescendingLedgers[0]
@@ -274,8 +268,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const copiedFile = await googleDriveAPI.copyReportTemplate(ledger.parentFolderId, ledger.name, ledger.description)
 
-      console.log('copy file success!!!!!!! ==> ', copiedFile)
-
       const fileId = copiedFile.fileId
 
       const newLedger = { ...ledger, fileId }
@@ -287,7 +279,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       dispatchLedger({ type: LedgerActions.SET_CURRENT_LEDGER, payload: newLedger })
       setLedgersLoading(false);
     } catch (err: any) {
-      console.log('auth context ledger error caught....', err)
       setLedgersLoading(false);
       if (err.message) {
         throw new Error(err.message)
@@ -311,7 +302,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const setCurrentLedger = (ledger: Ledger) => {
-    console.log('set current ledger triggered==> ', ledger)
     dispatchLedger({ type: LedgerActions.SET_CURRENT_LEDGER, payload: ledger });
   };
 

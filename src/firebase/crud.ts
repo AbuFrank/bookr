@@ -8,7 +8,6 @@ import { collection, query, where, getDocs, updateDoc, deleteDoc, doc, setDoc } 
 
 export async function createTransaction(transaction: FirestoreTransaction) {
   try {
-    console.log('TRANSACTION ..... ', transaction)
     const transactionsCollection = collection(db, 'transactions'); // 'transactions' is the collection name
     await setDoc(doc(transactionsCollection, transaction.id), transaction);
   } catch (error) {
@@ -35,7 +34,6 @@ export async function updateFirestoreTransaction(transaction: FirestoreTransacti
   try {
     const transactionDocRef = doc(db, 'transactions', transaction.id);
     await updateDoc(transactionDocRef, { ...transaction });
-    console.log('Transaction updated successfully!');
   } catch (error) {
     console.error('Error updating transaction:', error);
   }
@@ -43,10 +41,8 @@ export async function updateFirestoreTransaction(transaction: FirestoreTransacti
 
 export async function deleteFirestoreTransaction(transactionId: string) {
   try {
-    console.log('transactionId ==> ', transactionId)
     const transactionDocRef = doc(db, 'transactions', transactionId);
     await deleteDoc(transactionDocRef);
-    console.log('Transaction deleted successfully!');
   } catch (error) {
     console.error('Error deleting transaction:', error);
   }
@@ -56,7 +52,6 @@ export async function deleteFirestoreTransaction(transactionId: string) {
 
 export async function createAccount(account: FirestoreAccount) {
   try {
-    console.log('creating a new account ====>', account)
     const accountsCollection = collection(db, 'accounts');
     await setDoc(doc(accountsCollection, account.id), account);
   } catch (error) {
@@ -84,7 +79,6 @@ export async function updateFirestoreAccount(account: FirestoreAccount) {
   try {
     const accountDocRef = doc(db, 'accounts', account.id);
     await updateDoc(accountDocRef, { ...account });
-    console.log('Account updated successfully!');
   } catch (error) {
     console.error('Error updating account:', error);
   }
@@ -94,7 +88,6 @@ export async function deleteFirestoreAccount(accountId: string) {
   try {
     const accountDocRef = doc(db, 'accounts', accountId);
     await deleteDoc(accountDocRef);
-    console.log('Account deleted successfully!');
   } catch (error) {
     console.error('Error deleting account:', error);
   }
@@ -136,7 +129,6 @@ export async function updateFolder(folder: Folder) {
   try {
     const folderDocRef = doc(db, 'folders', folder.id);
     await updateDoc(folderDocRef, { ...folder });
-    console.log('Folder updated successfully!');
   } catch (error) {
     console.error('Error updating folder:', error);
     throw error;
@@ -152,7 +144,6 @@ export async function updateLedger(ledger: Ledger) {
   try {
     const ledgerDocRef = doc(db, 'ledgers', ledger.id);
     await updateDoc(ledgerDocRef, { ...ledger });
-    console.log('Ledger updated successfully!');
   } catch (error) {
     console.error('Error updating ledger:', error);
   }

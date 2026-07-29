@@ -109,8 +109,6 @@ export const calculateAccountTotals = (transactions: FirestoreTransaction[], cur
 
   // TODO make sure accounts can't be used on different types
 
-  console.log('original ledgers ==> ', currentLedgers)
-  console.log('current ledger ==> ', currentLedger)
   // set in chronological order
   currentLedgers.sort(
     (a, b) => new Date(a.dateCreated).getTime() - new Date(b.dateCreated).getTime()
@@ -118,8 +116,6 @@ export const calculateAccountTotals = (transactions: FirestoreTransaction[], cur
 
   // Knowing the index will allow us to determine how many Ledgers will need updating. i.e. update all future ledgers
   const ledgerIndex = currentLedgers.findIndex((l: Ledger) => l.id === currentLedger.id)
-
-  console.log('ledgerIndex ==> ', ledgerIndex)
 
   for (let i = 0; i < currentLedgers.length; i++) {
     const l = currentLedgers[i]
@@ -130,7 +126,6 @@ export const calculateAccountTotals = (transactions: FirestoreTransaction[], cur
     //   // All other ledgers need to adopt the new running balance
     //   l.startingBalance = previousRunningBalance
     // }
-    console.log("currently looped ledger ==> ", l)
     // append running totals if not first ledger to record "total up to this week"
     // if (i > 0) { l.runningTotals = { ...runningTotals } }
     // for each ledger grab transactions and accumulate totals, oldest first, so the
@@ -150,7 +145,6 @@ export const calculateAccountTotals = (transactions: FirestoreTransaction[], cur
     // rather than grouping by account like Expenses/Non-Deductible Expenses do.
     const depositItems: DepositUpdateItem[] = []
     const nonIncomeDepositItems: DepositUpdateItem[] = []
-    console.log('current transactions ==> ', currentTransactions)
     currentTransactions.forEach(t => {
       const accId = t.accountId
       const currentAccount = findAccountById(accounts, accId)

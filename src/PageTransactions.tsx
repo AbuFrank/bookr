@@ -90,7 +90,6 @@ const PageTransactions: React.FC = () => {
 
   useEffect(() => {
     // Navigate to books if no current year or book
-    console.log('navigate useEffect called..... ')
     if (!loading && !(currentFiscalYear?.id && currentBook)) {
       navigate('/books')
     }
@@ -199,13 +198,10 @@ const PageTransactions: React.FC = () => {
     } catch (error: any) {
       console.error('Error creating ledger:', error);
       if (error?.message?.includes('Token expired')) {
-        console.log('Access token invalid');
-
         // Show a button to re-authenticate instead of auto-reauth
         const userAction = window.confirm('Your session has expired. Please re-authenticate to continue.');
 
         if (userAction) {
-          console.log('WE HAVE USER ACTION!!!')
           try {
             await reauthenticate()
           } catch (reauthError) {
@@ -285,10 +281,6 @@ const PageTransactions: React.FC = () => {
     // TODO add a isSynced state to the ledger when state changes (transaction and ledger info) that is remove when the update ledger button is pressed.
     // TODO also hide button when isSynced is true
     // TODO prevent navigating away if isSynced === false
-
-    console.log('transaction submit data ==> ',
-      currentLedger
-    )
 
     if (
       formData.paidTo &&

@@ -46,8 +46,6 @@ const googleDriveAPI: GoogleDriveAPI = {
     // create top-level folder if no parentId
     const modifiedName = parentId ? name : `${currentUser.email?.split("@")[0]}-${currentUser.uid}`
 
-
-    console.log('creating folder ==> ', `name: ${modifiedName}`, `parentId: ${parentId}`)
     try {
       // No folder ID exists, need to create it
       // const accessToken = await googleDriveAPI.getAccessToken();
@@ -70,8 +68,6 @@ const googleDriveAPI: GoogleDriveAPI = {
         })
       });
 
-      console.log('response status ', response.status)
-
       if (response.status === 401) {
         throw new Error('Token expired')
       }
@@ -92,7 +88,6 @@ const googleDriveAPI: GoogleDriveAPI = {
       }
       // Store the folder in Firestore
       createFirestoreFolder(folder)
-      console.log('Created and stored folder:', folder);
       return folder
     } catch (error) {
       console.error('Error creating Bookr folder:', error);
@@ -123,10 +118,7 @@ const googleDriveAPI: GoogleDriveAPI = {
       // const accessToken = await googleDriveAPI.getAccessToken();
       // const accessToken = await getAccessTokenWithRefresh()
 
-      console.log('///////////////////')
-      // console.log('accessToken ==> ', accessToken)
-      console.log('current User ==> ', currentUser?.email)
-      // TODO use `emailVerified` 
+      // TODO use `emailVerified`
 
       if (!fileName) {
         throw new Error('Missing file name')
@@ -151,12 +143,10 @@ const googleDriveAPI: GoogleDriveAPI = {
       });
 
       if (response.status === 401) {
-        console.log('401 error caught...')
         throw new Error('Token expired')
       }
 
       if (!response.ok) {
-        console.log(response)
         throw new Error(`Failed to copy file: ${response.status}`);
       }
 
@@ -170,15 +160,6 @@ const googleDriveAPI: GoogleDriveAPI = {
 
   async updateSheetCells(updates: Update[]) {
     try {
-
-
-      console.log('///////////////////')
-      console.log('updateSheetCells....')
-      console.log('current User ==> ', currentUser?.email)
-      console.log('Updates ==> ', updates)
-
-      console.log('update sheet cells server calling...')
-
       // TODO no longer need access token due to shared folder and reader access
       const response = await fetch(`/api/update-sheets`, {
         method: 'PUT',
@@ -192,9 +173,6 @@ const googleDriveAPI: GoogleDriveAPI = {
       });
 
       const results = await response.json();
-
-      console.log('//////////////////')
-      console.log('updateSheetCells response ==> ', results)
 
       return results;
     } catch (error) {

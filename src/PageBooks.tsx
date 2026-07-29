@@ -93,8 +93,6 @@ const PageBooks = () => {
       return;
     }
 
-    console.log('group value: ', groupValue)
-    console.log('group name: ', groupName)
     if (!fiscalYear.trim()) {
       setError("Please provide a year.")
       setLoading(false)
@@ -128,7 +126,6 @@ const PageBooks = () => {
         ? folders.find(folder => folder.name === "Bookr App")
         : folderTree.find(folder => folder.name === groupValue);
 
-      console.log('parentFolder --> ', parentFolder)
       if (!parentFolder) {
         throw new Error('Parent folder not found');
       }
@@ -171,15 +168,11 @@ const PageBooks = () => {
       navigate('/transactions');
 
     } catch (error: any) {
-      console.log('ERROR +++> ', error)
       if (error.message.includes('Token expired')) {
-        console.log('Access token invalid');
-
         // Show a button to re-authenticate instead of auto-reauth
         const userAction = window.confirm('Your session has expired. Please re-authenticate to continue.');
 
         if (userAction) {
-          console.log('WE HAVE USER ACTION!!!')
           try {
             await reauthenticate()
           } catch (reauthError) {

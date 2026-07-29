@@ -22,6 +22,5 @@ export const findAccountById = (accounts: FirestoreAccount[], accountId: string)
  */
 export const generateFirestoreId = (collectionName: string): string => {
   const collectionRef = collection(db, collectionName);
-  console.log(`new id for collection "${collectionName}" created => `, doc(collectionRef).id)
   return doc(collectionRef).id;
 };

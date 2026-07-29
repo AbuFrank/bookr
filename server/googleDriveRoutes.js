@@ -7,7 +7,6 @@ const router = express.Router();
 // Load environment variables
 import dotenv from 'dotenv';
 // Load environment variables - works locally and in Vercel
-console.log('NODE env? ', process.env.NODE_ENV)
 if (!process.env.NODE_ENV) {
   // Load local .env only in development
   dotenv.config({ path: path.join(process.cwd(), 'server/.env.local') });
@@ -30,8 +29,6 @@ router.get('/auth/google', (req, res) => {
       prompt: 'consent'
     });
 
-    console.log('Authorization URL:', url);
-
     // Redirect user to Google OAuth2 consent page
     res.redirect(url);
   } catch (error) {
@@ -48,8 +45,6 @@ router.post('/folder', async (req, res) => {
   try {
     const { name, parentId, userEmail } = req.body;
 
-    console.log('creating folder ...', { name, parentId, userEmail, sharedFolderId })
-
     if (!name) {
       return res.status(400).json({ error: 'Must provide a name' });
     }
@@ -60,7 +55,6 @@ router.post('/folder', async (req, res) => {
     }
 
     const folderData = await createFolder(name, userEmail, sharedFolderId, parentId)
-    console.log('successful folder data ==> ', folderData)
     res.json(folderData);
   } catch (error) {
     console.error('Error creating folder:', error?.response || error);
@@ -75,12 +69,6 @@ router.post('/folder', async (req, res) => {
 router.post('/copy-template', async (req, res) => {
   try {
     const { fileName, email, parentFolderId, description } = req.body;
-
-    console.log("API... ")
-    console.log("templateId ==> ", templateId)
-    console.log("fileName ==> ", fileName)
-    console.log("email ==> ", email)
-    console.log("parent folder id ===> ", parentFolderId)
 
     if (!templateId) {
       return res.status(400).json({ error: 'No template file found.' });
@@ -104,10 +92,6 @@ router.post('/copy-template', async (req, res) => {
       description
     );
 
-    console.log('copy template result ==> ', result)
-    const newFileId = result.fileId
-
-
     res.json(result)
   } catch (error) {
     console.error('Error copying file:', error);
@@ -130,11 +114,6 @@ router.post('/copy-template', async (req, res) => {
 // Copy a specific sheet from one template to another DO NOT DELETE
 router.get('/copy-template-sheet', async (req, res) => {
   try {
-
-    console.log("copy-sheet-tab API... ")
-    console.log("templateId ==> ", templateId)
-    console.log('source template id ==> ', sourceTemplateId)
-
     if (!templateId) {
       return res.status(400).json({ error: 'No template file found.' });
     }
@@ -144,13 +123,10 @@ router.get('/copy-template-sheet', async (req, res) => {
     }
 
 
-    const result = await copySheetToTemplate(
+    await copySheetToTemplate(
       templateId,
       sourceTemplateId
     );
-
-    console.log('copy template result ==> ', result)
-
 
     res.json({ message: "copy success" })
   } catch (error) {
@@ -174,9 +150,6 @@ router.get('/copy-template-sheet', async (req, res) => {
 // Update multiple cells in the Google Sheet
 router.put('/update-sheets', async (req, res) => {
   try {
-
-    console.log('...googleDriveRoutes')
-    console.log('/update-sheets')
     // const { fileId } = req.params;
     const { updates } = req.body;
 
@@ -194,7 +167,6 @@ router.put('/update-sheets', async (req, res) => {
       success: result?.status === 200,
       data: result?.data,
     }))
-    console.log('response ==> ', results)
 
     res.json(results)
 

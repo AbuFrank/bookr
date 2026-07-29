@@ -21,7 +21,6 @@ const FolderTree: React.FC<FolderTreeProps> = ({ folders, className = '' }) => {
   const navigate = useNavigate();
 
   const handleFolderClick = (book: Folder, year: Folder) => {
-    console.log('selected folders ===> ', book, year)
     // Set the current book and fiscal year
     setCurrentFiscalYear(year);
     setCurrentBook(book);

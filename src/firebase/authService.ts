@@ -91,7 +91,6 @@ export const getUserAccessToken = async (userId: string): Promise<string | null>
 
 export const reauthenticate = async (): Promise<void> => {
   try {
-    console.log('attempting signout....');
     await signOut(auth)
     await signInWithGoogle()
   } catch (error: any) {

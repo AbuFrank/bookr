@@ -40,11 +40,7 @@ const ReportTrigger: React.FC = () => {
       // bonus: only update firestore ledgers for current ledger and newer
       // TODO create updateLedger function
       // TODO Actually only keep starting total for the given year folder and use that to recalculate running total instead of having to update every ledger
-      console.log('updates ==> ', updates)
-
       const response = await googleDriveAPI.updateSheetCells(updates);
-
-      console.log("trigger button response ==> ", response)
 
       const allSucceeded = Array.isArray(response) && response.every((result) => result?.success);
       if (allSucceeded) {
@@ -53,7 +49,6 @@ const ReportTrigger: React.FC = () => {
 
     } catch (error) {
       console.error('Error generating report:', error);
-      console.log("Error!!! >> ", error)
     } finally {
       setIsProcessing(false);
     }

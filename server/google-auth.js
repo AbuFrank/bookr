@@ -60,19 +60,15 @@ export const getServiceAccountDrive = () => {
 
 export const createFolder = async (name, userEmail, sharedFolderId, parentId) => {
   try {
-    console.log('createFolder fired... ', { name, userEmail, sharedFolderId, parentId })
     const { drive } = getServiceAccountDrive();
 
     // Check for existence
     // Verify the shared folder exists first
     try {
-      const response = await drive.files.get({
+      await drive.files.get({
         fileId: sharedFolderId,
         supportsAllDrives: true
       });
-
-      console.log('Shared folder exists and is accessible');
-      console.log(response.data)
     } catch (error) {
       console.error('Shared folder not accessible:', error.message);
       throw new Error(`Shared folder not accessible: ${sharedFolderId}`);
@@ -88,10 +84,7 @@ export const createFolder = async (name, userEmail, sharedFolderId, parentId) =>
       supportsAllDrives: true
     });
 
-    console.log('attempting folder permissions for bookr manager...', response.data.id)
     const newFolderId = response.data.id
-
-    console.log('email address ==> ', userEmail)
 
     // Only give read access if not top-level folder
     if (parentId) {
@@ -115,9 +108,6 @@ export const createFolder = async (name, userEmail, sharedFolderId, parentId) =>
 export const copyTemplateFile = async (templateId, fileName, userEmail, parentFolderId, description) => {
   try {
     const { drive } = getServiceAccountDrive();
-    console.log('copyTemplateFile...')
-
-    console.log('parent folder id', parentFolderId)
 
     // Copy the file directly using Google Drive API
     const copyResponse = await drive.files.copy({
@@ -135,9 +125,6 @@ export const copyTemplateFile = async (templateId, fileName, userEmail, parentFo
     const newFileId = copyResponse.data.id;
     await updateSpreadsheetMetaData(newFileId, fileName, description)
 
-    console.log('newFileId ==> ', newFileId)
-
-    console.log('attempting file permissions for user ==> ', userEmail)
     await drive.permissions.create({
       fileId: newFileId,
       requestBody: {
@@ -149,8 +136,6 @@ export const copyTemplateFile = async (templateId, fileName, userEmail, parentFo
     });
 
     // TODO update "WEEK N" and "MONTH/YYYY" cells
-
-    console.log('Attempting file transfer of new file with ID: ', newFileId)
 
     return {
       fileId: newFileId,
@@ -222,8 +207,6 @@ export async function updateSpreadsheet(spreadsheetId, transactions, allUpdates)
       spreadsheetId
     });
 
-    console.log('Available sheets:', fetchFileResponse.data.sheets);
-
     const ledgerSheetId = fetchFileResponse.data.sheets[0].properties.sheetId;
     const summarySheetId = fetchFileResponse.data.sheets[1].properties.sheetId;
 
@@ -232,9 +215,6 @@ export async function updateSpreadsheet(spreadsheetId, transactions, allUpdates)
     const requests = [];
     const startRow = 4; // 0-indexed row 4
 
-    console.log("sheet id ==> ", summarySheetId)
-
-    console.log("ALL UPDATES??", allUpdates)
     const { lastDTotal, lastNDTotal, lastTotal, ...typeUpdates } = allUpdates
 
     // example typeUpdates
@@ -275,7 +255,6 @@ export async function updateSpreadsheet(spreadsheetId, transactions, allUpdates)
     // the current transaction count get blanked (transaction is undefined for them).
     for (let idx = 0; idx < MaxLedgerRows; idx++) {
       const transaction = transactions[idx]
-      console.log('transaction ==> ', transaction)
 
       requests.push({
         updateCells: {
@@ -354,8 +333,6 @@ export async function updateSpreadsheet(spreadsheetId, transactions, allUpdates)
 
     // Add Deposits and Non-Income "Total Up To This Week"
     new Array('lastDTotal', 'lastNDTotal').forEach(lastTotal => {
-      console.log("last total???? ", allUpdates[lastTotal])
-      console.log('cell location for last total?? ', cellLocations[lastTotal])
       const rowIndex = cellLocations[lastTotal].row
       const colIndex = cellLocations[lastTotal].col
       requests.push({
@@ -379,9 +356,7 @@ export async function updateSpreadsheet(spreadsheetId, transactions, allUpdates)
           fields: 'userEnteredValue'
         }
       });
-    })
-
-    console.log("type updates??", typeUpdates);
+    });
 
     // Deposits (D) / Non-Income Deposits (ND): one row per transaction, chronological.
     // typeUpdates[type] is already sorted ascending by date (see calculateAccountTotals).
@@ -484,7 +459,7 @@ export async function updateSpreadsheet(spreadsheetId, transactions, allUpdates)
           accountNumber < cellLocation.accountNumberStart ||
           accountNumber > maxAccountNumber
         ) {
-          console.log(`[updateSpreadsheet] skipping ${type} account "${accountName}" - accountNumber ${rawAccountNumber} is out of range`)
+          console.warn(`[updateSpreadsheet] skipping ${type} account "${accountName}" - accountNumber ${rawAccountNumber} is out of range`)
           return
         }
 
@@ -639,19 +614,12 @@ export async function copySheetToTemplate(templateId, sourceSpreadsheetId) {
   try {
     const { sheets } = getServiceAccountDrive();
 
-    console.log('Copying sheet from source spreadsheet...');
-
     // Get the source spreadsheet to understand its structure
     const sourceSpreadsheet = await sheets.spreadsheets.get({
       spreadsheetId: sourceSpreadsheetId
     });
 
-    console.log('Available sheets:', sourceSpreadsheet.data.sheets);
-
     const sourceSheetId = sourceSpreadsheet.data.sheets[0].properties.sheetId;
-    console.log("copySheetToTemplate")
-    console.log('sheetData')
-    console.log("spreadsheet tab ID ==> ", sourceSheetId)
 
     // copy the source sheet to the template
     const copySheetResponse = await sheets.spreadsheets.sheets.copyTo({
