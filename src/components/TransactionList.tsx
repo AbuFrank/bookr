@@ -138,9 +138,22 @@ const TransactionList: React.FC<TransactionListProps> = ({
                   <div className="text-sm text-gray-500">{account?.accountName}</div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className={`text-sm font-medium ${transactionType === 'deposit' ? 'text-green-600' : 'text-red-600'}`}>
-                    {formatCurrency(transaction.value)}
-                  </div>
+                  {isEditing ? (
+                    <input
+                      type="number"
+                      name="value"
+                      value={editFormData.value}
+                      onChange={onEditFormChange}
+                      className={editInputClass}
+                      min="0"
+                      step="0.01"
+                      required
+                    />
+                  ) : (
+                    <div className={`text-sm font-medium ${transactionType === 'deposit' ? 'text-green-600' : 'text-red-600'}`}>
+                      {formatCurrency(transaction.value)}
+                    </div>
+                  )}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full
@@ -154,7 +167,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
                   {isEditing ? (
                     <div className="flex justify-end gap-3">
                       <button
-                        disabled={!!transactionsLoading || !editFormData.paidTo}
+                        disabled={!!transactionsLoading || !editFormData.paidTo || !editFormData.value}
                         onClick={() => onEditSave(transaction)}
                         className="text-blue-600 hover:text-blue-900"
                       >

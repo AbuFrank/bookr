@@ -5,6 +5,7 @@ import {
   findAccountById,
   getAccountNumberRange,
   getAccountTypeCode,
+  getDepositDescription,
   isAccountNumberInRange,
 } from './ledger';
 import type { FirestoreAccount } from '../types/accountTypes';
@@ -55,6 +56,17 @@ const makeFiscalYear = (overrides: Partial<Folder> = {}): Folder => ({
   parentId: 'book-1',
   startingBalance: 0,
   ...overrides,
+});
+
+describe('getDepositDescription', () => {
+  it('joins paidTo and memo with " - "', () => {
+    expect(getDepositDescription('Employer', 'March bonus')).toBe('Employer - March bonus');
+  });
+
+  it('falls back to paidTo alone when memo is empty or absent', () => {
+    expect(getDepositDescription('Employer', '')).toBe('Employer');
+    expect(getDepositDescription('Employer')).toBe('Employer');
+  });
 });
 
 describe('getAccountTypeCode', () => {
@@ -203,7 +215,7 @@ describe('calculateAccountTotals', () => {
   const ledgerC = makeLedger({ id: 'ledger-c', fileId: 'file-c', dateCreated: new Date('2024-01-15') });
 
   const transactions = [
-    makeTransaction({ id: 'txn-1', ledgerId: 'ledger-a', accountId: 'checking', value: 500, date: new Date('2024-01-02'), paidTo: 'Employer' }),
+    makeTransaction({ id: 'txn-1', ledgerId: 'ledger-a', accountId: 'checking', value: 500, date: new Date('2024-01-02'), paidTo: 'Employer', memo: 'March bonus' }),
     makeTransaction({ id: 'txn-2', ledgerId: 'ledger-a', accountId: 'vehicle', value: 50, date: new Date('2024-01-03') }),
     makeTransaction({ id: 'txn-3', ledgerId: 'ledger-b', accountId: 'vehicle', value: 30, date: new Date('2024-01-09') }),
     makeTransaction({ id: 'txn-4', ledgerId: 'ledger-c', accountId: 'checking', value: 200, date: new Date('2024-01-16'), paidTo: 'Client' }),
@@ -224,7 +236,7 @@ describe('calculateAccountTotals', () => {
     expect(a.fileId).toBe('file-a');
     expect(a.lastTotal).toBe(100);
     expect(a.lastDTotal).toBe(0);
-    expect(a.D).toEqual([{ date: transactions[0].date, description: 'Employer', amount: 500 }]);
+    expect(a.D).toEqual([{ date: transactions[0].date, description: 'Employer - March bonus', amount: 500 }]);
     expect(a.E).toEqual([{ accountName: 'Vehicle', accountNumber: 12, value: 50, previousTotal: 0 }]);
 
     // Ledger B: no deposit activity, so D is empty (no more zero-value carry-forward
@@ -297,7 +309,7 @@ describe('calculateAccountTotals', () => {
     const { updates } = calculateAccountTotals(withOrphanTransaction, ledgerA, [ledgerA], accounts, fiscalYear);
 
     expect(updates).toHaveLength(1);
-    expect(updates[0].D).toEqual([{ date: transactions[0].date, description: 'Employer', amount: 500 }]);
+    expect(updates[0].D).toEqual([{ date: transactions[0].date, description: 'Employer - March bonus', amount: 500 }]);
     expect(updates[0].E).toEqual([{ accountName: 'Vehicle', accountNumber: 12, value: 50, previousTotal: 0 }]);
   });
 });

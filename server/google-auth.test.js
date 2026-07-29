@@ -225,7 +225,7 @@ describe('updateSpreadsheet', () => {
     spreadsheetsBatchUpdate.mockResolvedValue({ status: 200, data: {} });
 
     const transactions = [
-      { date: { seconds: Math.floor(new Date(2024, 2, 1).getTime() / 1000) }, checkNumber: '101', paidTo: 'Vendor A', accountNumber: 12, value: 45 },
+      { date: { seconds: Math.floor(new Date(2024, 2, 1).getTime() / 1000) }, checkNumber: '101', paidTo: 'Vendor A', memo: 'Oil change', accountNumber: 12, value: 45 },
       { date: { seconds: Math.floor(new Date(2024, 2, 8).getTime() / 1000) }, checkNumber: '', paidTo: 'Vendor B', accountNumber: 34, value: 60 },
     ];
 
@@ -264,7 +264,7 @@ describe('updateSpreadsheet', () => {
               { userEnteredValue: { stringValue: 'Vendor A' } },
               { userEnteredValue: { stringValue: '' } },
               { userEnteredValue: { stringValue: '' } },
-              { userEnteredValue: { stringValue: '' } },
+              { userEnteredValue: { stringValue: 'Oil change' } },
               { userEnteredValue: { stringValue: '' } },
               { userEnteredValue: { stringValue: '' } },
               { userEnteredValue: { stringValue: '' } },

@@ -12,6 +12,7 @@ export interface EditTransactionFormData {
   checkNumber: string,
   paidTo: string,
   memo: string,
+  value: string,
   date: Date,
 }
 

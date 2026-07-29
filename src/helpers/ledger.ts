@@ -7,6 +7,15 @@ import type { FirestoreTransaction } from "../types/transactionTypes";
 import { toComparableTime } from "./date";
 
 /**
+ * Combines a deposit transaction's "paid to/deposit from" and memo into the
+ * single description string written to the Deposits/Non-Income Deposits rows
+ * on the Account Summary sheet, e.g. "Paycheck - March bonus". Omits the
+ * " - " separator when there's no memo.
+ */
+export const getDepositDescription = (paidTo: string, memo?: string): string =>
+  memo ? `${paidTo} - ${memo}` : paidTo
+
+/**
  * Maps an account's type/subType (e.g. type: 'expense', subType: 'non-deductible')
  * to its spreadsheet column group code.
  */
@@ -139,12 +148,12 @@ export const calculateAccountTotals = (transactions: FirestoreTransaction[], cur
       const accTypeCode = getAccountTypeCode(currentAccount)
       if (accTypeCode === "D") {
         lastDTotal = lastDTotal + t.value
-        depositItems.push({ date: t.date, description: t.paidTo, amount: t.value })
+        depositItems.push({ date: t.date, description: getDepositDescription(t.paidTo, t.memo), amount: t.value })
         return
       }
       if (accTypeCode === "ND") {
         lastNDTotal = lastNDTotal + t.value;
-        nonIncomeDepositItems.push({ date: t.date, description: t.paidTo, amount: t.value })
+        nonIncomeDepositItems.push({ date: t.date, description: getDepositDescription(t.paidTo, t.memo), amount: t.value })
         return
       }
 

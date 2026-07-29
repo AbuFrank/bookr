@@ -43,6 +43,7 @@ const PageTransactions: React.FC = () => {
     checkNumber: '',
     paidTo: '',
     memo: '',
+    value: '',
     date: new Date(),
   });
   const [isAccountFormToggled, setIsAccountFormToggled] = useState(false);
@@ -332,6 +333,7 @@ const PageTransactions: React.FC = () => {
       checkNumber: transaction.checkNumber || '',
       paidTo: transaction.paidTo,
       memo: transaction.memo || '',
+      value: transaction.value.toString(),
       date: fromUTCDateOnly(transaction.date),
     });
   };
@@ -350,13 +352,14 @@ const PageTransactions: React.FC = () => {
   };
 
   const handleEditSave = async (transaction: FirestoreTransaction) => {
-    if (!editFormData.paidTo) return;
+    if (!editFormData.paidTo || !editFormData.value) return;
 
     const updatedTransaction: FirestoreTransaction = {
       ...transaction,
       checkNumber: editFormData.checkNumber,
       paidTo: editFormData.paidTo,
       memo: editFormData.memo,
+      value: parseFloat(editFormData.value),
       date: toUTCDateOnly(editFormData.date),
     };
 

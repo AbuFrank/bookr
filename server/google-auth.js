@@ -294,17 +294,12 @@ export async function updateSpreadsheet(spreadsheetId, transactions, allUpdates)
                 },
                 {
                   userEnteredValue: {
-                    stringValue: transaction.paidTo ? transaction.paidTo : ''
+                    stringValue: transaction.paidTo ? transaction.paidTo : '' // Columns C-E (merged): "Payment to/deposit from"
                   }
                 },
                 {
                   userEnteredValue: {
-                    stringValue: '' // Leave other cells in the merged range blank.
-                  }
-                },
-                {
-                  userEnteredValue: {
-                    stringValue: ''
+                    stringValue: '' // Leave other cells in the "Payment to/deposit from" merge (D-E) blank.
                   }
                 },
                 {
@@ -314,7 +309,12 @@ export async function updateSpreadsheet(spreadsheetId, transactions, allUpdates)
                 },
                 {
                   userEnteredValue: {
-                    stringValue: ''
+                    stringValue: transaction.memo ? transaction.memo : '' // Columns F-I (merged): "Memo"
+                  }
+                },
+                {
+                  userEnteredValue: {
+                    stringValue: '' // Leave other cells in the "Memo" merge (G-I) blank.
                   }
                 },
                 {
