@@ -188,19 +188,27 @@ const MaxND = 7;
 
 const ledgerStartRow = 5;
 
-// Function to format the date as mm/dd
+// Function to format the date as mm/dd. Uses UTC components rather than the
+// server process's local timezone, since transaction dates are stored as
+// UTC-midnight-anchored (see toUTCDateOnly in src/helpers/date.ts) - reading
+// them back with local getters would shift the day depending on whatever
+// timezone this server process happens to run in.
 function formatDate(date) {
-  console.log('DATE!!! >>>>> ', date)
-  const month = (date.getMonth() + 1).toString().padStart(2, '0');
-  const day = date.getDate().toString().padStart(2, '0');
+  const month = (date.getUTCMonth() + 1).toString().padStart(2, '0');
+  const day = date.getUTCDate().toString().padStart(2, '0');
   return `${month}/${day}`;
 }
-// Function to convert Firestore timestamp to JS Date
+// Function to convert a Firestore Timestamp (or Timestamp-shaped JSON, e.g.
+// {seconds, nanoseconds} as produced by Timestamp#toJSON over the wire) to a
+// JS Date. Falls back to parsing directly for values that arrive as a plain
+// Date/ISO string instead - e.g. a transaction added earlier in the same
+// client session that hasn't round-tripped through Firestore yet still holds
+// a raw JS Date, which serializes to an ISO string (no .seconds) over HTTP.
 function convertFirestoreTimestamp(firestoreTimestamp) {
-  const { seconds } = firestoreTimestamp;
-  console.log('seconds ==> ', seconds)
-  console.log('date ==> ', new Date(seconds * 1000))
-  return new Date(seconds * 1000);
+  if (firestoreTimestamp && typeof firestoreTimestamp.seconds === 'number') {
+    return new Date(firestoreTimestamp.seconds * 1000);
+  }
+  return new Date(firestoreTimestamp);
 }
 
 export async function updateSpreadsheet(spreadsheetId, transactions, allUpdates) {

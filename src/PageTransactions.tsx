@@ -12,6 +12,7 @@ import { type FormLedgerData, type Ledger, type LedgerInput } from './types/ledg
 import { useNavigate } from 'react-router-dom';
 import { calculateTotals, getAccountNumberRange, isAccountNumberInRange } from './helpers/ledger';
 import { getDistinctPaidTo } from './helpers/transactions';
+import { toUTCDateOnly } from './helpers/date';
 import { reauthenticate } from './firebase/authService';
 import FormLedger from './components/FormLedger';
 import { PencilIcon, PlusIcon, XIcon } from 'lucide-react';
@@ -290,7 +291,7 @@ const PageTransactions: React.FC = () => {
         id: generateFirestoreId('transactions'),
         userId: user?.uid || 'unknown',
         checkNumber: formData.checkNumber,
-        date: formData.date,
+        date: toUTCDateOnly(formData.date),
         dateCreated: new Date(),
         ledgerId: currentLedger.id,
         paidTo: formData.paidTo,
