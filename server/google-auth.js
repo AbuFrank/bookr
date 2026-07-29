@@ -166,14 +166,14 @@ export const copyTemplateFile = async (templateId, fileName, userEmail, parentFo
 // add ledger back and create entries
 // TODO use value - 1 to adjust for 0-indexed for convenience here
 const cellLocations = {
-  // accountNumber 1-49 maps directly to rows E.row..E.row+MaxE-1. Column I (index 8) is a
-  // static pre-printed 1-49 index baked into the template - never write to it.
+  // accountNumber 1-50 maps directly to rows E.row..E.row+MaxE-1. Column I (index 8) is a
+  // static pre-printed 1-50 index baked into the template - never write to it.
   "E": { row: 4, accountNumberStart: 1, accountName: 9, value: 11, previousTotal: 13 }, // Row 5. Columns J, L, N
   // Deposits/Non-Income Deposits list transactions chronologically, not grouped by account.
   "D": { row: 5, date: 0, description: 1, amount: 6 }, // Row 6, Columns A, B (merged B-F), G
   "ND": { row: 29, date: 0, description: 1, amount: 6 }, // Row 30, Columns A, B (merged B-F), G
-  // accountNumber 50-56 maps to rows NE.row..NE.row+MaxNE-1.
-  "NE": { row: 46, accountNumberStart: 50, accountName: 0, value: 2, previousTotal: 4 }, // Row 47. Columns A, C, E
+  // accountNumber 51-57 maps to rows NE.row..NE.row+MaxNE-1.
+  "NE": { row: 46, accountNumberStart: 51, accountName: 0, value: 2, previousTotal: 4 }, // Row 47. Columns A, C, E
   "lastDTotal": { row: 23, col: 6 }, // Row 24, Column G
   "lastNDTotal": { row: 38, col: 6 }, // Row 39, Column G
   "lastTotal": { row: 4, col: 11 },
@@ -181,7 +181,7 @@ const cellLocations = {
   "description": { row: 0, col: 8 }
 }
 
-const MaxE = 49;
+const MaxE = 50;
 const MaxNE = 7;
 const MaxD = 16;
 const MaxND = 7;

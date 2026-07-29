@@ -234,7 +234,7 @@ describe('updateSpreadsheet', () => {
       lastNDTotal: 20,
       lastTotal: 1000,
       E: [{ accountName: 'Vehicle', accountNumber: 12, value: 45, previousTotal: 100 }],
-      NE: [{ accountName: 'Groceries', accountNumber: 50, value: 58, previousTotal: 380 }],
+      NE: [{ accountName: 'Groceries', accountNumber: 51, value: 58, previousTotal: 380 }],
       D: [{ date: { seconds: Math.floor(new Date(2024, 2, 8).getTime() / 1000) }, description: 'Vendor B', amount: 60 }],
       ND: [],
     };
@@ -408,12 +408,12 @@ describe('updateSpreadsheet', () => {
           fields: 'userEnteredValue',
         },
       },
-      // non-deductible expense row: placed by accountNumber (50, the first NE slot) -> row 46 + (50-50) = 46
+      // non-deductible expense row: placed by accountNumber (51, the first NE slot) -> row 46 + (51-51) = 46
       // account name is the combined "accountNumber - accountName" format
       {
         updateCells: {
           range: { sheetId: 222, startRowIndex: 46, endRowIndex: 47, startColumnIndex: 0, endColumnIndex: 1 },
-          rows: [{ values: [{ userEnteredValue: { stringValue: '50 - Groceries' } }] }],
+          rows: [{ values: [{ userEnteredValue: { stringValue: '51 - Groceries' } }] }],
           fields: 'userEnteredValue',
         },
       },
@@ -474,10 +474,10 @@ describe('updateSpreadsheet', () => {
       lastDTotal: 0,
       lastNDTotal: 0,
       lastTotal: 0,
-      // MaxE is 49, so 50 is one past the valid E range (1-49).
-      E: [{ accountName: 'Too High', accountNumber: 50, value: 10, previousTotal: 0 }],
-      // NE's valid range is 50-56, so 49 is one below it.
-      NE: [{ accountName: 'Too Low', accountNumber: 49, value: 10, previousTotal: 0 }],
+      // MaxE is 50, so 51 is one past the valid E range (1-50).
+      E: [{ accountName: 'Too High', accountNumber: 51, value: 10, previousTotal: 0 }],
+      // NE's valid range is 51-57, so 50 is one below it.
+      NE: [{ accountName: 'Too Low', accountNumber: 50, value: 10, previousTotal: 0 }],
       D: [],
       ND: [],
     });
@@ -500,7 +500,7 @@ describe('updateSpreadsheet', () => {
       lastNDTotal: 0,
       lastTotal: 0,
       E: [{ accountName: 'Vehicle', accountNumber: '12', value: 45, previousTotal: 100 }],
-      NE: [{ accountName: 'Groceries', accountNumber: '50', value: 58, previousTotal: 380 }],
+      NE: [{ accountName: 'Groceries', accountNumber: '51', value: 58, previousTotal: 380 }],
       D: [],
       ND: [],
     });
@@ -512,7 +512,7 @@ describe('updateSpreadsheet', () => {
     expect(requestBody.requests).toHaveLength(3 + 16 * 3 + 7 * 3 + 46 + 2 * 3);
     const serialized = JSON.stringify(requestBody.requests);
     expect(serialized).toContain('Vehicle');
-    expect(serialized).toContain('50 - Groceries');
+    expect(serialized).toContain('51 - Groceries');
   });
 
   it('blanks an E/NE account row once its combined total (value + previousTotal) drops to $0', async () => {
@@ -526,7 +526,7 @@ describe('updateSpreadsheet', () => {
       // e.g. an account's only transaction was deleted, so this ledger's value and
       // everything carried forward from earlier ledgers are both now zero.
       E: [{ accountName: 'Vehicle', accountNumber: 12, value: 0, previousTotal: 0 }],
-      NE: [{ accountName: 'Groceries', accountNumber: 50, value: 0, previousTotal: 0 }],
+      NE: [{ accountName: 'Groceries', accountNumber: 51, value: 0, previousTotal: 0 }],
       D: [],
       ND: [],
     });
