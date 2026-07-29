@@ -234,7 +234,7 @@ describe('updateSpreadsheet', () => {
       lastNDTotal: 20,
       lastTotal: 1000,
       E: [{ accountName: 'Vehicle', accountNumber: 12, value: 45, previousTotal: 100 }],
-      NE: [{ accountName: 'Groceries', accountNumber: 75, value: 58, previousTotal: 380 }],
+      NE: [{ accountName: 'Groceries', accountNumber: 50, value: 58, previousTotal: 380 }],
       D: [{ date: { seconds: Math.floor(new Date(2024, 2, 8).getTime() / 1000) }, description: 'Vendor B', amount: 60 }],
       ND: [],
     };
@@ -355,12 +355,12 @@ describe('updateSpreadsheet', () => {
           fields: 'userEnteredValue',
         },
       },
-      // non-deductible expense row: placed by accountNumber (75, the first NE slot) -> row 46 + (75-75) = 46
+      // non-deductible expense row: placed by accountNumber (50, the first NE slot) -> row 46 + (50-50) = 46
       // account name is the combined "accountNumber - accountName" format
       {
         updateCells: {
           range: { sheetId: 222, startRowIndex: 46, endRowIndex: 47, startColumnIndex: 0, endColumnIndex: 1 },
-          rows: [{ values: [{ userEnteredValue: { stringValue: '75 - Groceries' } }] }],
+          rows: [{ values: [{ userEnteredValue: { stringValue: '50 - Groceries' } }] }],
           fields: 'userEnteredValue',
         },
       },
@@ -419,10 +419,10 @@ describe('updateSpreadsheet', () => {
       lastDTotal: 0,
       lastNDTotal: 0,
       lastTotal: 0,
-      // MaxE is 51, so 52 is one past the valid E range (1-51).
-      E: [{ accountName: 'Too High', accountNumber: 52, value: 10, previousTotal: 0 }],
-      // NE's valid range is 75-81, so 74 is one below it.
-      NE: [{ accountName: 'Too Low', accountNumber: 74, value: 10, previousTotal: 0 }],
+      // MaxE is 49, so 50 is one past the valid E range (1-49).
+      E: [{ accountName: 'Too High', accountNumber: 50, value: 10, previousTotal: 0 }],
+      // NE's valid range is 50-56, so 49 is one below it.
+      NE: [{ accountName: 'Too Low', accountNumber: 49, value: 10, previousTotal: 0 }],
       D: [],
       ND: [],
     });
@@ -444,7 +444,7 @@ describe('updateSpreadsheet', () => {
       lastNDTotal: 0,
       lastTotal: 0,
       E: [{ accountName: 'Vehicle', accountNumber: '12', value: 45, previousTotal: 100 }],
-      NE: [{ accountName: 'Groceries', accountNumber: '75', value: 58, previousTotal: 380 }],
+      NE: [{ accountName: 'Groceries', accountNumber: '50', value: 58, previousTotal: 380 }],
       D: [],
       ND: [],
     });
@@ -454,7 +454,7 @@ describe('updateSpreadsheet', () => {
     expect(requestBody.requests).toHaveLength(3 + 2 * 3);
     const serialized = JSON.stringify(requestBody.requests);
     expect(serialized).toContain('Vehicle');
-    expect(serialized).toContain('75 - Groceries');
+    expect(serialized).toContain('50 - Groceries');
   });
 
   it('swallows errors from the Sheets API instead of throwing', async () => {

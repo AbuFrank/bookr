@@ -1,5 +1,9 @@
 # Changelog
 
+## July 29, 2026
+
+- Re-range the Account Summary sheet's Expense/Non-Deductible-Expense accountNumber allotments to match the reworked template layout: Deductible Expenses now 1-49 (was 1-51), Non-Deductible Expenses now 50-56 (was 75-81, same physical rows)
+
 ## July 28, 2026
 
 - Fix the fiscal year's starting balance never reaching `currentFiscalYear` in app state or the Firestore folder doc — `googleDriveAPI.createFolder` persisted the new fiscal-year folder to Firestore before `startingBalance` was merged in, and `PageBooks.tsx` then called `setCurrentFiscalYear` with that unmerged copy instead of the one patched with the balance. `createFolder` now accepts an optional `startingBalance` and writes it at creation time, so the value is correct in-session and survives a reload.

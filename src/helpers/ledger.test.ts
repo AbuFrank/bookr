@@ -84,12 +84,12 @@ describe('getAccountNumberRange', () => {
     expect(getAccountNumberRange('deposit', 'non-income')).toEqual([151, 157]);
   });
 
-  it('returns [1, 51] for deductible expense accounts', () => {
-    expect(getAccountNumberRange('expense', null)).toEqual([1, 51]);
+  it('returns [1, 49] for deductible expense accounts', () => {
+    expect(getAccountNumberRange('expense', null)).toEqual([1, 49]);
   });
 
-  it('returns [75, 81] for non-deductible expense accounts', () => {
-    expect(getAccountNumberRange('expense', 'non-deductible')).toEqual([75, 81]);
+  it('returns [50, 56] for non-deductible expense accounts', () => {
+    expect(getAccountNumberRange('expense', 'non-deductible')).toEqual([50, 56]);
   });
 });
 
@@ -108,18 +108,18 @@ describe('isAccountNumberInRange', () => {
     expect(isAccountNumberInRange('deposit', 'non-income', 158)).toBe(false);
   });
 
-  it('enforces 1-51 for deductible expense accounts', () => {
+  it('enforces 1-49 for deductible expense accounts', () => {
     expect(isAccountNumberInRange('expense', null, 1)).toBe(true);
-    expect(isAccountNumberInRange('expense', null, 51)).toBe(true);
-    expect(isAccountNumberInRange('expense', null, 52)).toBe(false);
+    expect(isAccountNumberInRange('expense', null, 49)).toBe(true);
+    expect(isAccountNumberInRange('expense', null, 50)).toBe(false);
     expect(isAccountNumberInRange('expense', null, 0)).toBe(false);
   });
 
-  it('enforces 75-81 for non-deductible expense accounts', () => {
-    expect(isAccountNumberInRange('expense', 'non-deductible', 75)).toBe(true);
-    expect(isAccountNumberInRange('expense', 'non-deductible', 81)).toBe(true);
-    expect(isAccountNumberInRange('expense', 'non-deductible', 74)).toBe(false);
-    expect(isAccountNumberInRange('expense', 'non-deductible', 82)).toBe(false);
+  it('enforces 50-56 for non-deductible expense accounts', () => {
+    expect(isAccountNumberInRange('expense', 'non-deductible', 50)).toBe(true);
+    expect(isAccountNumberInRange('expense', 'non-deductible', 56)).toBe(true);
+    expect(isAccountNumberInRange('expense', 'non-deductible', 49)).toBe(false);
+    expect(isAccountNumberInRange('expense', 'non-deductible', 57)).toBe(false);
   });
 
   it('rejects non-numeric input', () => {

@@ -19,14 +19,14 @@ export const getAccountTypeCode = (account: FirestoreAccount): 'E' | 'NE' | 'D' 
 
 /**
  * Valid accountNumber ranges, matching the fixed row allotments on the
- * Account Summary sheet template (Deductible Expenses: rows for 1-51,
- * Non-Deductible Expenses: rows for 75-81, Business Deposits: rows 6-21,
+ * Account Summary sheet template (Deductible Expenses: rows for 1-49,
+ * Non-Deductible Expenses: rows for 50-56, Business Deposits: rows 6-21,
  * Non-Income Deposits: rows 30-36). Deposits are still listed chronologically
  * by transaction rather than grouped by account row (see calculateAccountTotals),
  * so these ranges are enforced for bookkeeping consistency only.
  */
-export const E_ACCOUNT_NUMBER_RANGE: [number, number] = [1, 51];
-export const NE_ACCOUNT_NUMBER_RANGE: [number, number] = [75, 81];
+export const E_ACCOUNT_NUMBER_RANGE: [number, number] = [1, 49];
+export const NE_ACCOUNT_NUMBER_RANGE: [number, number] = [50, 56];
 export const D_ACCOUNT_NUMBER_RANGE: [number, number] = [101, 116];
 export const ND_ACCOUNT_NUMBER_RANGE: [number, number] = [151, 157];
 
