@@ -15,10 +15,10 @@
 + Track “update Report” state and change text so that it’s clear it has changed
 + Fix date not showing correctly
 + Add edit transaction functionality to edit checkNumber, date, paidTo, and memo
-- Change “Add Transaction” / “Close Form” button to blue solid button
-- Change Deposit/Expense to buttons
-- Change Non-income/non-deductible to toggle switch UI
-- Put “Update Report” and “Link to spreadsheet” above and below transaction form
++ Change “Add Transaction” / “Close Form” button to blue solid button
++ Change Deposit/Expense to buttons
++ Change Non-income/non-deductible to toggle switch UI
++ Put “Update Report” and “Link to spreadsheet” above and below transaction form
 - Split ledger description cell into the “payment to/deposit from” and make second column “memo”
 - Need a way to track the removal of entries e.g. if there is only one deposit and it is deleted, it needs to be removed from the google sheet
 - add accounts management section that will let you edit accounts (has implcations across different fiscal years within the same group)

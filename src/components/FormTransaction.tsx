@@ -136,16 +136,28 @@ const FormTransaction: React.FC<FormTransactionProps> = ({
               </div>
               <div>
                 <label className={labelClass}>Type</label>
-                <select
-                  name="type"
-                  value={newAccount.type || ""}
-                  onChange={handleAccountFormChange}
-                  className={inputClass}
-                >
-                  <option value="">Select Expense/Deposit</option>
-                  <option value="deposit">Deposit</option>
-                  <option value="expense">Expense</option>
-                </select>
+                <div className="inline-flex rounded-lg border border-gray-300 overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => handleAccountFormChange({ target: { name: 'type', value: 'deposit' } } as unknown as React.ChangeEvent<HTMLSelectElement>)}
+                    className={`px-4 py-2 font-medium text-sm transition ${newAccount.type === 'deposit'
+                      ? 'bg-blue-600 text-white shadow-inner'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                  >
+                    Deposit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleAccountFormChange({ target: { name: 'type', value: 'expense' } } as unknown as React.ChangeEvent<HTMLSelectElement>)}
+                    className={`px-4 py-2 font-medium text-sm border-l border-gray-300 transition ${newAccount.type === 'expense'
+                      ? 'bg-blue-600 text-white shadow-inner'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                  >
+                    Expense
+                  </button>
+                </div>
               </div>
               {newAccount.type && (
                 <div>
@@ -153,19 +165,26 @@ const FormTransaction: React.FC<FormTransactionProps> = ({
                     {newAccount.type === 'deposit' ? 'Non-Income' : 'Non-Deductible'}
                   </label>
                   <div className="flex items-center">
-                    <input
-                      type="checkbox"
-                      name="subType"
-                      checked={newAccount.subType === (newAccount.type === 'deposit' ? 'non-income' : 'non-deductible')}
-                      onChange={(e) => {
-                        const nextSubType = e.target.checked
-                          ? (newAccount.type === 'deposit' ? 'non-income' : 'non-deductible')
-                          : null;
-                        setNewAccount({ ...newAccount, subType: nextSubType });
-                      }}
-                      className="mr-2 h-4 w-4 text-blue-600 rounded"
-                    />
-                    <span className="text-sm text-gray-600">
+                    {(() => {
+                      const activeSubType = newAccount.type === 'deposit' ? 'non-income' : 'non-deductible';
+                      const isActive = newAccount.subType === activeSubType;
+                      return (
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={isActive}
+                          onClick={() => setNewAccount({ ...newAccount, subType: isActive ? null : activeSubType })}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isActive ? 'bg-blue-600' : 'bg-gray-300'
+                            }`}
+                        >
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isActive ? 'translate-x-6' : 'translate-x-1'
+                              }`}
+                          />
+                        </button>
+                      );
+                    })()}
+                    <span className="ml-2 text-sm text-gray-600">
                       {newAccount.type === 'deposit' ? 'Non-Income' : 'Non-Deductible'}
                     </span>
                   </div>
