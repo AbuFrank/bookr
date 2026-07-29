@@ -27,17 +27,18 @@ export const getAccountTypeCode = (account: FirestoreAccount): 'E' | 'NE' | 'D' 
 }
 
 /**
- * Valid accountNumber ranges, matching the fixed row allotments on the
- * Account Summary sheet template (Deductible Expenses: rows for 1-49,
- * Non-Deductible Expenses: rows for 50-56, Business Deposits: rows 6-21,
- * Non-Income Deposits: rows 30-36). Deposits are still listed chronologically
- * by transaction rather than grouped by account row (see calculateAccountTotals),
- * so these ranges are enforced for bookkeeping consistency only.
+ * Valid accountNumber ranges. The Expense/Non-Deductible-Expense ranges match the
+ * fixed row allotments on the Account Summary sheet template (Deductible Expenses:
+ * rows for 1-49, Non-Deductible Expenses: rows for 50-56) - each number maps
+ * directly to a row. Deposits are listed chronologically by transaction rather
+ * than grouped by account row (see calculateAccountTotals), so their ranges
+ * (Business Deposits 101-150, Non-Income Deposits 151-200) aren't tied to any
+ * row budget and are just for bookkeeping/numbering consistency.
  */
 export const E_ACCOUNT_NUMBER_RANGE: [number, number] = [1, 49];
 export const NE_ACCOUNT_NUMBER_RANGE: [number, number] = [50, 56];
-export const D_ACCOUNT_NUMBER_RANGE: [number, number] = [101, 116];
-export const ND_ACCOUNT_NUMBER_RANGE: [number, number] = [151, 157];
+export const D_ACCOUNT_NUMBER_RANGE: [number, number] = [101, 150];
+export const ND_ACCOUNT_NUMBER_RANGE: [number, number] = [151, 200];
 
 export const getAccountNumberRange = (
   type: 'deposit' | 'expense' | null,
@@ -85,6 +86,16 @@ export const calculateAccountTotals = (transactions: FirestoreTransaction[], cur
   // Track running balance in case we're updating an old ledger
   let lastTotal = currentFiscalYear.startingBalance || 0;
   const runningTotals: { [accountId: string]: { value: number, previousTotal: number, type: string } } = {};
+  // Seed every E/NE account up front (not just ones with current transactions) so an
+  // account whose only transaction in the whole fiscal year gets deleted still produces
+  // a zeroed-out update entry - otherwise it would never appear in any ledger's payload
+  // again, and updateSpreadsheet would have no entry to blank its stale row with.
+  accounts.forEach(account => {
+    const typeCode = getAccountTypeCode(account)
+    if (typeCode === 'E' || typeCode === 'NE') {
+      runningTotals[account.id] = { value: 0, previousTotal: 0, type: typeCode }
+    }
+  })
   // Running Receipts Total
   let lastDTotal = 0;
   // Running Non-Income Deposits Total

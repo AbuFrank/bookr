@@ -250,6 +250,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const updateFolder = async (updatedFolder: Folder) => {
     await updateFirestoreFolder(updatedFolder);
     dispatchFolder({ type: FolderActions.UPDATE_FOLDER, payload: updatedFolder });
+    // A fiscal year's startingBalance seeds the running total of its
+    // chronologically-first ledger (see calculateAccountTotals), so changing
+    // it makes the Google Sheet report stale just like a transaction edit.
+    setHasUnsavedReportChanges(true)
   };
   const deleteFolder = (folderId: string) => {
     dispatchFolder({ type: FolderActions.DELETE_FOLDER, payload: folderId });

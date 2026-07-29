@@ -162,7 +162,9 @@ const FormTransaction: React.FC<FormTransactionProps> = ({
               {newAccount.type && (
                 <div>
                   <label className={labelClass}>
-                    {newAccount.type === 'deposit' ? 'Non-Income' : 'Non-Deductible'}
+                    {newAccount.type === 'deposit'
+                      ? (newAccount.subType ? 'Non-Income' : 'Income')
+                      : (newAccount.subType ? 'Non-Deductible' : 'Deductible')}
                   </label>
                   <div className="flex items-center">
                     {(() => {
@@ -185,7 +187,9 @@ const FormTransaction: React.FC<FormTransactionProps> = ({
                       );
                     })()}
                     <span className="ml-2 text-sm text-gray-600">
-                      {newAccount.type === 'deposit' ? 'Non-Income' : 'Non-Deductible'}
+                      {newAccount.type === 'deposit'
+                      ? (newAccount.subType ? 'Non-Income' : 'Income')
+                      : (newAccount.subType ? 'Non-Deductible' : 'Deductible')}
                     </span>
                   </div>
                 </div>

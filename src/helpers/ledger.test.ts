@@ -88,12 +88,12 @@ describe('getAccountTypeCode', () => {
 });
 
 describe('getAccountNumberRange', () => {
-  it('returns [101, 116] for business deposit accounts', () => {
-    expect(getAccountNumberRange('deposit', null)).toEqual([101, 116]);
+  it('returns [101, 150] for business deposit accounts', () => {
+    expect(getAccountNumberRange('deposit', null)).toEqual([101, 150]);
   });
 
-  it('returns [151, 157] for non-income deposit accounts', () => {
-    expect(getAccountNumberRange('deposit', 'non-income')).toEqual([151, 157]);
+  it('returns [151, 200] for non-income deposit accounts', () => {
+    expect(getAccountNumberRange('deposit', 'non-income')).toEqual([151, 200]);
   });
 
   it('returns [1, 49] for deductible expense accounts', () => {
@@ -106,18 +106,18 @@ describe('getAccountNumberRange', () => {
 });
 
 describe('isAccountNumberInRange', () => {
-  it('enforces 101-116 for business deposit accounts', () => {
+  it('enforces 101-150 for business deposit accounts', () => {
     expect(isAccountNumberInRange('deposit', null, 101)).toBe(true);
-    expect(isAccountNumberInRange('deposit', null, 116)).toBe(true);
+    expect(isAccountNumberInRange('deposit', null, 150)).toBe(true);
     expect(isAccountNumberInRange('deposit', null, 100)).toBe(false);
-    expect(isAccountNumberInRange('deposit', null, 117)).toBe(false);
+    expect(isAccountNumberInRange('deposit', null, 151)).toBe(false);
   });
 
-  it('enforces 151-157 for non-income deposit accounts', () => {
+  it('enforces 151-200 for non-income deposit accounts', () => {
     expect(isAccountNumberInRange('deposit', 'non-income', 151)).toBe(true);
-    expect(isAccountNumberInRange('deposit', 'non-income', 157)).toBe(true);
+    expect(isAccountNumberInRange('deposit', 'non-income', 200)).toBe(true);
     expect(isAccountNumberInRange('deposit', 'non-income', 150)).toBe(false);
-    expect(isAccountNumberInRange('deposit', 'non-income', 158)).toBe(false);
+    expect(isAccountNumberInRange('deposit', 'non-income', 201)).toBe(false);
   });
 
   it('enforces 1-49 for deductible expense accounts', () => {
@@ -311,5 +311,16 @@ describe('calculateAccountTotals', () => {
     expect(updates).toHaveLength(1);
     expect(updates[0].D).toEqual([{ date: transactions[0].date, description: 'Employer - March bonus', amount: 500 }]);
     expect(updates[0].E).toEqual([{ accountName: 'Vehicle', accountNumber: 12, value: 50, previousTotal: 0 }]);
+  });
+
+  it('still produces a zeroed-out E/NE entry for an account whose only transaction in the whole fiscal year was deleted', () => {
+    // Vehicle had one transaction in ledger A; simulate it being deleted by omitting it -
+    // account has zero transactions anywhere in the fiscal year now, but its row on the
+    // sheet may still show stale data from a previous sync and needs a $0 entry to clear it.
+    const withoutVehicleTransaction = transactions.filter(t => t.accountId !== 'vehicle');
+
+    const { updates } = calculateAccountTotals(withoutVehicleTransaction, ledgerA, [ledgerA, ledgerB, ledgerC], accounts, fiscalYear);
+
+    expect(updates[0].E).toEqual([{ accountName: 'Vehicle', accountNumber: 12, value: 0, previousTotal: 0 }]);
   });
 });

@@ -185,6 +185,8 @@ const MaxE = 49;
 const MaxNE = 7;
 const MaxD = 16;
 const MaxND = 7;
+// Ledger sheet's transaction register runs rows 5-50 (1-indexed) in the template.
+const MaxLedgerRows = 46;
 
 const ledgerStartRow = 5;
 
@@ -266,8 +268,13 @@ export async function updateSpreadsheet(spreadsheetId, transactions, allUpdates)
       }
     })
 
-    // Loop through transactions and add each to requests for ledgerSheetId
-    transactions.forEach((transaction, idx) => {
+    // Loop through transactions and add each to requests for ledgerSheetId. Always rewrite
+    // the whole row budget (ledgerStartRow through ledgerStartRow + MaxLedgerRows - 1), not
+    // just as many rows as there are current transactions - otherwise a deleted transaction
+    // leaves its old row's data sitting on the sheet with nothing to overwrite it. Rows past
+    // the current transaction count get blanked (transaction is undefined for them).
+    for (let idx = 0; idx < MaxLedgerRows; idx++) {
+      const transaction = transactions[idx]
       console.log('transaction ==> ', transaction)
 
       requests.push({
@@ -284,17 +291,17 @@ export async function updateSpreadsheet(spreadsheetId, transactions, allUpdates)
               values: [
                 {
                   userEnteredValue: {
-                    stringValue: transaction.date ? formatDate(convertFirestoreTimestamp(transaction.date)) : ''
+                    stringValue: transaction?.date ? formatDate(convertFirestoreTimestamp(transaction.date)) : ''
                   }
                 },
                 {
                   userEnteredValue: {
-                    stringValue: transaction.checkNumber ? transaction.checkNumber.toString() : ''
+                    stringValue: transaction?.checkNumber ? transaction.checkNumber.toString() : ''
                   }
                 },
                 {
                   userEnteredValue: {
-                    stringValue: transaction.paidTo ? transaction.paidTo : '' // Columns C-E (merged): "Payment to/deposit from"
+                    stringValue: transaction?.paidTo ? transaction.paidTo : '' // Columns C-E (merged): "Payment to/deposit from"
                   }
                 },
                 {
@@ -309,7 +316,7 @@ export async function updateSpreadsheet(spreadsheetId, transactions, allUpdates)
                 },
                 {
                   userEnteredValue: {
-                    stringValue: transaction.memo ? transaction.memo : '' // Columns F-I (merged): "Memo"
+                    stringValue: transaction?.memo ? transaction.memo : '' // Columns F-I (merged): "Memo"
                   }
                 },
                 {
@@ -328,13 +335,13 @@ export async function updateSpreadsheet(spreadsheetId, transactions, allUpdates)
                   }
                 },
                 {
-                  userEnteredValue: transaction.accountNumber
+                  userEnteredValue: transaction?.accountNumber
                     ? { numberValue: Number(transaction.accountNumber) }
                     : { stringValue: '' }
                 },
                 {
                   userEnteredValue: {
-                    numberValue: transaction.value ? transaction.value : 0 //Provide a default number
+                    numberValue: transaction?.value ? transaction.value : 0 //Provide a default number
                   }
                 }
               ]
@@ -343,7 +350,7 @@ export async function updateSpreadsheet(spreadsheetId, transactions, allUpdates)
           fields: 'userEnteredValue'
         }
       });
-    })
+    }
 
     // Add Deposits and Non-Income "Total Up To This Week"
     new Array('lastDTotal', 'lastNDTotal').forEach(lastTotal => {
@@ -383,8 +390,11 @@ export async function updateSpreadsheet(spreadsheetId, transactions, allUpdates)
       const items = typeUpdates[type] || []
       const max = type === 'D' ? MaxD : MaxND
 
-      for (let index = 0; index < Math.min(items.length, max); index++) {
-        const { date, description, amount } = items[index]
+      // Always rewrite the full row budget, not just the rows with current items - deposits
+      // are listed chronologically with no fixed per-account row, so a deleted transaction
+      // must blank out whatever row it used to occupy instead of leaving stale data behind.
+      for (let index = 0; index < max; index++) {
+        const { date, description, amount } = items[index] || {}
         const rowIndex = cellLocation.row + index
 
         requests.push({
@@ -457,7 +467,10 @@ export async function updateSpreadsheet(spreadsheetId, transactions, allUpdates)
 
     // Expenses (E) / Non-Deductible Expenses (NE): each account lands on a fixed row
     // determined by its own accountNumber, so accounts with no activity this ledger
-    // simply produce no write (their row stays blank/unchanged).
+    // simply produce no write (their row stays blank/unchanged). An account that IS
+    // tracked but whose combined total (this ledger's value + carried-forward
+    // previousTotal) has dropped to $0 gets its name blanked below, effectively
+    // deleting the line.
     ['E', 'NE'].forEach(type => {
       const cellLocation = cellLocations[type]
       const items = typeUpdates[type] || []
@@ -476,7 +489,12 @@ export async function updateSpreadsheet(spreadsheetId, transactions, allUpdates)
         }
 
         const rowIndex = cellLocation.row + (accountNumber - cellLocation.accountNumberStart)
-        const displayName = type === 'NE' ? `${accountNumber} - ${accountName}` : accountName
+        // A zero combined total (this ledger's value plus everything carried forward from
+        // previous ledgers) means the account has no remaining activity at all - e.g. its
+        // last transaction was deleted - so blank the row instead of leaving a stale name
+        // sitting next to $0 values.
+        const isEmptyAccount = value + previousTotal === 0
+        const displayName = isEmptyAccount ? '' : (type === 'NE' ? `${accountNumber} - ${accountName}` : accountName)
 
         requests.push({
           updateCells: {
