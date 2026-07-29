@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatFirestoreDate, toComparableTime } from './date';
+import { formatFirestoreDate, toComparableTime, fromUTCDateOnly, toUTCDateOnly } from './date';
 
 describe('formatFirestoreDate', () => {
   it('formats a Firestore Timestamp-like object', () => {
@@ -46,5 +46,31 @@ describe('toComparableTime', () => {
     expect(toComparableTime(null)).toBe(0);
     expect(toComparableTime(undefined)).toBe(0);
     expect(toComparableTime(42)).toBe(0);
+  });
+});
+
+describe('fromUTCDateOnly', () => {
+  it('round-trips through toUTCDateOnly back to the same local Y/M/D', () => {
+    const picked = new Date(2024, 2, 5); // March 5, 2024, local midnight
+    const stored = toUTCDateOnly(picked);
+    const editable = fromUTCDateOnly(stored);
+    expect(editable.getFullYear()).toBe(2024);
+    expect(editable.getMonth()).toBe(2);
+    expect(editable.getDate()).toBe(5);
+  });
+
+  it('handles a Firestore Timestamp-like object', () => {
+    const seconds = Math.floor(Date.UTC(2024, 2, 5) / 1000);
+    const editable = fromUTCDateOnly({ seconds });
+    expect(editable.getFullYear()).toBe(2024);
+    expect(editable.getMonth()).toBe(2);
+    expect(editable.getDate()).toBe(5);
+  });
+
+  it('handles a date string', () => {
+    const editable = fromUTCDateOnly('2024-03-05T00:00:00.000Z');
+    expect(editable.getFullYear()).toBe(2024);
+    expect(editable.getMonth()).toBe(2);
+    expect(editable.getDate()).toBe(5);
   });
 });

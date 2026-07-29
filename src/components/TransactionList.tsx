@@ -1,17 +1,40 @@
 import React, { useMemo } from 'react';
 import type { FirestoreTransaction } from '../types/transactionTypes';
+import type { EditTransactionFormData } from '../types/transactionTypes';
 import { findAccountById } from '../lib/firestore';
 import type { FirestoreAccount } from '../types/accountTypes';
 import { formatFirestoreDate, toComparableTime } from '../helpers/date';
+import MyDatePicker from './MyDatePicker';
+
+const editInputClass = "w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm";
 
 interface TransactionListProps {
   accounts: FirestoreAccount[]
   transactions: FirestoreTransaction[];
   deleteTransaction: (id: string) => void;
   transactionsLoading: boolean;
+  editingTransactionId: string | null;
+  editFormData: EditTransactionFormData;
+  onEditStart: (transaction: FirestoreTransaction) => void;
+  onEditFormChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onEditDateChange: (date: Date | null) => void;
+  onEditSave: (transaction: FirestoreTransaction) => void;
+  onEditCancel: () => void;
 }
 
-const TransactionList: React.FC<TransactionListProps> = ({ accounts, transactions, deleteTransaction, transactionsLoading }) => {
+const TransactionList: React.FC<TransactionListProps> = ({
+  accounts,
+  transactions,
+  deleteTransaction,
+  transactionsLoading,
+  editingTransactionId,
+  editFormData,
+  onEditStart,
+  onEditFormChange,
+  onEditDateChange,
+  onEditSave,
+  onEditCancel,
+}) => {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -54,20 +77,58 @@ const TransactionList: React.FC<TransactionListProps> = ({ accounts, transaction
           {sortedTransactions.map((transaction) => {
             const account = findAccountById(accounts, transaction?.accountId);
             const transactionType = account?.type;
+            const isEditing = editingTransactionId === transaction.id;
 
             return (
               <tr key={transaction.id} className="hover:bg-gray-50">
 
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900">{formatFirestoreDate(transaction.date)}</div>
+                  {isEditing ? (
+                    <MyDatePicker date={editFormData.date} onDateChange={onEditDateChange} />
+                  ) : (
+                    <div className="text-sm font-medium text-gray-900">{formatFirestoreDate(transaction.date)}</div>
+                  )}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900">{transaction.checkNumber}</div>
+                  {isEditing ? (
+                    <input
+                      type="text"
+                      name="checkNumber"
+                      value={editFormData.checkNumber}
+                      onChange={onEditFormChange}
+                      className={editInputClass}
+                    />
+                  ) : (
+                    <div className="text-sm font-medium text-gray-900">{transaction.checkNumber}</div>
+                  )}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900">{transaction.paidTo}</div>
-                  {transaction.memo && (
-                    <div className="text-xs text-gray-400 mt-1">{transaction.memo}</div>
+                  {isEditing ? (
+                    <div className="flex flex-col gap-1">
+                      <input
+                        type="text"
+                        name="paidTo"
+                        value={editFormData.paidTo}
+                        onChange={onEditFormChange}
+                        className={editInputClass}
+                        required
+                      />
+                      <input
+                        type="text"
+                        name="memo"
+                        value={editFormData.memo}
+                        onChange={onEditFormChange}
+                        className={editInputClass}
+                        placeholder="Memo"
+                      />
+                    </div>
+                  ) : (
+                    <>
+                      <div className="text-sm font-medium text-gray-900">{transaction.paidTo}</div>
+                      {transaction.memo && (
+                        <div className="text-xs text-gray-400 mt-1">{transaction.memo}</div>
+                      )}
+                    </>
                   )}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-center">
@@ -90,13 +151,40 @@ const TransactionList: React.FC<TransactionListProps> = ({ accounts, transaction
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <button
-                    disabled={!!transactionsLoading}
-                    onClick={() => deleteTransaction(transaction.id)}
-                    className="text-red-600 hover:text-red-900"
-                  >
-                    Delete
-                  </button>
+                  {isEditing ? (
+                    <div className="flex justify-end gap-3">
+                      <button
+                        disabled={!!transactionsLoading || !editFormData.paidTo}
+                        onClick={() => onEditSave(transaction)}
+                        className="text-blue-600 hover:text-blue-900"
+                      >
+                        Save
+                      </button>
+                      <button
+                        onClick={onEditCancel}
+                        className="text-gray-500 hover:text-gray-700"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex justify-end gap-3">
+                      <button
+                        disabled={!!transactionsLoading}
+                        onClick={() => onEditStart(transaction)}
+                        className="text-blue-600 hover:text-blue-900"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        disabled={!!transactionsLoading}
+                        onClick={() => deleteTransaction(transaction.id)}
+                        className="text-red-600 hover:text-red-900"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  )}
                 </td>
               </tr>
             );

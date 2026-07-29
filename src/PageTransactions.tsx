@@ -5,14 +5,14 @@ import FormTransaction from './components/FormTransaction';
 import TransactionList from './components/TransactionList';
 import { useAuth } from './hooks/useAuth';
 import type { FirestoreAccount, FormAccountData } from './types/accountTypes';
-import type { FirestoreTransaction } from './types/transactionTypes';
+import type { EditTransactionFormData, FirestoreTransaction } from './types/transactionTypes';
 import { findAccountById, generateFirestoreId } from './lib/firestore';
 import ReportTrigger from './components/ReportTrigger';
 import { type FormLedgerData, type Ledger, type LedgerInput } from './types/ledgerTypes';
 import { useNavigate } from 'react-router-dom';
 import { calculateTotals, getAccountNumberRange, isAccountNumberInRange } from './helpers/ledger';
 import { getDistinctPaidTo } from './helpers/transactions';
-import { toUTCDateOnly } from './helpers/date';
+import { fromUTCDateOnly, toUTCDateOnly } from './helpers/date';
 import { reauthenticate } from './firebase/authService';
 import FormLedger from './components/FormLedger';
 import { PencilIcon, PlusIcon, XIcon } from 'lucide-react';
@@ -37,6 +37,14 @@ const PageTransactions: React.FC = () => {
 
   const [currentAccount, setCurrentAccount] = useState<FirestoreAccount | null>(null);
   const [showTransactionForm, setShowTransactionForm] = useState(false);
+
+  const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null);
+  const [editFormData, setEditFormData] = useState<EditTransactionFormData>({
+    checkNumber: '',
+    paidTo: '',
+    memo: '',
+    date: new Date(),
+  });
   const [isAccountFormToggled, setIsAccountFormToggled] = useState(false);
 
   const [showLedgerForm, setShowLedgerForm] = useState(false);
@@ -58,6 +66,7 @@ const PageTransactions: React.FC = () => {
     transactions,
     currentTransactions,
     addTransaction,
+    updateTransaction,
     deleteTransaction,
     addAccount,
     loading,
@@ -314,6 +323,48 @@ const PageTransactions: React.FC = () => {
       } catch (error) {
         console.error('Error submitting transaction:', error);
       }
+    }
+  };
+
+  const handleEditStart = (transaction: FirestoreTransaction) => {
+    setEditingTransactionId(transaction.id);
+    setEditFormData({
+      checkNumber: transaction.checkNumber || '',
+      paidTo: transaction.paidTo,
+      memo: transaction.memo || '',
+      date: fromUTCDateOnly(transaction.date),
+    });
+  };
+
+  const handleEditFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setEditFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleEditDateChange = (date: Date | null) => {
+    setEditFormData(prev => ({ ...prev, date: date || new Date() }));
+  };
+
+  const handleEditCancel = () => {
+    setEditingTransactionId(null);
+  };
+
+  const handleEditSave = async (transaction: FirestoreTransaction) => {
+    if (!editFormData.paidTo) return;
+
+    const updatedTransaction: FirestoreTransaction = {
+      ...transaction,
+      checkNumber: editFormData.checkNumber,
+      paidTo: editFormData.paidTo,
+      memo: editFormData.memo,
+      date: toUTCDateOnly(editFormData.date),
+    };
+
+    try {
+      await updateTransaction(updatedTransaction);
+      setEditingTransactionId(null);
+    } catch (error) {
+      console.error('Error updating transaction:', error);
     }
   };
 
@@ -607,6 +658,13 @@ const PageTransactions: React.FC = () => {
             transactions={currentTransactions}
             deleteTransaction={deleteTransaction}
             transactionsLoading={transactionsLoading}
+            editingTransactionId={editingTransactionId}
+            editFormData={editFormData}
+            onEditStart={handleEditStart}
+            onEditFormChange={handleEditFormChange}
+            onEditDateChange={handleEditDateChange}
+            onEditSave={handleEditSave}
+            onEditCancel={handleEditCancel}
           />
         </div>}
       </main>

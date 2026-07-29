@@ -40,6 +40,28 @@ export const toUTCDateOnly = (date: Date): Date =>
   new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
 
 /**
+ * Inverse of toUTCDateOnly: takes a stored value (Firestore Timestamp-like,
+ * Date, or date string) and returns a local Date with the same Y/M/D as the
+ * stored UTC day, so a date picker displays the right calendar day and, if
+ * re-submitted unchanged, round-trips through toUTCDateOnly to the same value.
+ */
+export const fromUTCDateOnly = (timestamp: any): Date => {
+  let date: Date;
+
+  if (timestamp?.seconds !== undefined) {
+    date = fromUnixTime(timestamp.seconds);
+  } else if (timestamp instanceof Date) {
+    date = timestamp;
+  } else if (typeof timestamp === 'string') {
+    date = new Date(timestamp);
+  } else {
+    date = new Date();
+  }
+
+  return new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+};
+
+/**
  * Converts a Firestore Timestamp-like object, Date, or date string into a
  * millisecond epoch value for sorting/comparison purposes.
  */

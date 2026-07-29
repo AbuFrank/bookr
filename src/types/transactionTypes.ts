@@ -8,6 +8,13 @@ export interface FormData {
   date: Date,
 }
 
+export interface EditTransactionFormData {
+  checkNumber: string,
+  paidTo: string,
+  memo: string,
+  date: Date,
+}
+
 export interface FirestoreTransaction {
   id: string;
   userId: string;
