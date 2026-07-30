@@ -7,6 +7,13 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == userId;
     }
 
+    // users/{userId} docs are keyed by uid directly (created/read in
+    // authService.ts#signInWithGoogle on every sign-in), so the doc ID
+    // itself is the ownership check.
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+
     // folders, ledgers, accounts, and transactions are all top-level
     // collections scoped by a `userId` field on each document (doc IDs are
     // client-generated, so there's no docId == uid shortcut available).

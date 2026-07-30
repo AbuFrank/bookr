@@ -6,20 +6,21 @@ const { verifyIdToken: adminVerifyIdToken, authFactory, initializeApp } = vi.hoi
   initializeApp: vi.fn(),
 }));
 
-vi.mock('firebase-admin', () => {
+vi.mock('firebase-admin/app', () => {
   const apps = [];
   return {
-    default: {
-      apps,
-      initializeApp: (...args) => {
-        const app = initializeApp(...args) || {};
-        apps.push(app);
-        return app;
-      },
-      auth: authFactory,
+    getApps: () => apps,
+    initializeApp: (...args) => {
+      const app = initializeApp(...args) || {};
+      apps.push(app);
+      return app;
     },
   };
 });
+
+vi.mock('firebase-admin/auth', () => ({
+  getAuth: authFactory,
+}));
 
 let getAuthenticatedEmail;
 let verifyIdToken;

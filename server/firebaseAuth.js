@@ -1,12 +1,14 @@
-import admin from 'firebase-admin';
+import { initializeApp, getApps } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
 
 // Verifying a Firebase ID token only needs the project ID (to check the
 // token's `aud` claim) - Google's public signing certs are fetched over
 // HTTPS with no credential required, so no service account key is needed
 // here (unlike server/google-auth.js's Drive/Sheets service account).
 function getAdminApp() {
-  if (admin.apps.length > 0) {
-    return admin.apps[0];
+  const apps = getApps();
+  if (apps.length > 0) {
+    return apps[0];
   }
 
   const projectId = process.env.FIREBASE_PROJECT_ID;
@@ -14,11 +16,11 @@ function getAdminApp() {
     throw new Error('FIREBASE_PROJECT_ID environment variable is required');
   }
 
-  return admin.initializeApp({ projectId });
+  return initializeApp({ projectId });
 }
 
 export async function verifyIdToken(idToken) {
-  return admin.auth(getAdminApp()).verifyIdToken(idToken);
+  return getAuth(getAdminApp()).verifyIdToken(idToken);
 }
 
 // Confirms the request carries a valid Firebase ID token and returns the
@@ -39,6 +41,7 @@ export async function getAuthenticatedEmail(req) {
   try {
     decoded = await verifyIdToken(token);
   } catch (err) {
+    console.error('verifyIdToken failed:', err);
     const error = new Error('Invalid or expired token');
     error.statusCode = 401;
     throw error;
