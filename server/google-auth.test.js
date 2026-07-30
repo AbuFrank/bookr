@@ -9,6 +9,7 @@ const {
   filesCreate,
   filesCopy,
   permissionsCreate,
+  permissionsList,
   spreadsheetsGet,
   spreadsheetsBatchUpdate,
   sheetsCopyTo,
@@ -21,6 +22,7 @@ const {
   filesCreate: vi.fn(),
   filesCopy: vi.fn(),
   permissionsCreate: vi.fn(),
+  permissionsList: vi.fn(),
   spreadsheetsGet: vi.fn(),
   spreadsheetsBatchUpdate: vi.fn(),
   sheetsCopyTo: vi.fn(),
@@ -49,7 +51,7 @@ beforeEach(async () => {
   googleAuthCtor.mockImplementation(function GoogleAuth() {});
   driveFactory.mockReturnValue({
     files: { get: filesGet, create: filesCreate, copy: filesCopy },
-    permissions: { create: permissionsCreate },
+    permissions: { create: permissionsCreate, list: permissionsList },
   });
   sheetsFactory.mockReturnValue({
     spreadsheets: {
@@ -110,6 +112,66 @@ describe('createFolder', () => {
       googleAuth.createFolder('name', 'user@example.com', 'bad-shared-id', 'parent')
     ).rejects.toThrow('Shared folder not accessible: bad-shared-id');
     expect(filesCreate).not.toHaveBeenCalled();
+  });
+});
+
+describe('isEmailAuthorizedForFile', () => {
+  it('returns true when the email has a permission on the file', async () => {
+    permissionsList.mockResolvedValue({
+      data: { permissions: [{ emailAddress: 'svc@test.iam.gserviceaccount.com', role: 'owner' }, { emailAddress: 'User@Example.com', role: 'reader' }] },
+    });
+
+    const authorized = await googleAuth.isEmailAuthorizedForFile('file-1', 'user@example.com');
+
+    expect(authorized).toBe(true);
+    expect(permissionsList).toHaveBeenCalledWith({
+      fileId: 'file-1',
+      supportsAllDrives: true,
+      fields: 'permissions(emailAddress,role)',
+    });
+  });
+
+  it('returns false when the email has no permission on the file', async () => {
+    permissionsList.mockResolvedValue({
+      data: { permissions: [{ emailAddress: 'someone-else@example.com', role: 'reader' }] },
+    });
+
+    const authorized = await googleAuth.isEmailAuthorizedForFile('file-1', 'user@example.com');
+
+    expect(authorized).toBe(false);
+  });
+
+  it('fails closed (returns false) when the Drive lookup throws', async () => {
+    permissionsList.mockRejectedValue(new Error('boom'));
+
+    const authorized = await googleAuth.isEmailAuthorizedForFile('file-1', 'user@example.com');
+
+    expect(authorized).toBe(false);
+  });
+});
+
+describe('assertAuthorizedForFileIds', () => {
+  it('resolves without throwing when every fileId is authorized', async () => {
+    permissionsList.mockResolvedValue({ data: { permissions: [{ emailAddress: 'user@example.com', role: 'reader' }] } });
+
+    await expect(
+      googleAuth.assertAuthorizedForFileIds(['file-1', 'file-2'], 'user@example.com')
+    ).resolves.toBeUndefined();
+    expect(permissionsList).toHaveBeenCalledTimes(2);
+  });
+
+  it('throws a 403 naming the first unauthorized fileId', async () => {
+    permissionsList.mockImplementation(({ fileId }) =>
+      Promise.resolve({
+        data: {
+          permissions: fileId === 'file-1' ? [{ emailAddress: 'user@example.com', role: 'reader' }] : [],
+        },
+      })
+    );
+
+    await expect(
+      googleAuth.assertAuthorizedForFileIds(['file-1', 'file-2'], 'user@example.com')
+    ).rejects.toMatchObject({ statusCode: 403, message: expect.stringContaining('file-2') });
   });
 });
 

@@ -8,7 +8,6 @@ Contributors welcomed!
 
 ### - Sheets API
 
-- remove /auth/google route in lieu of shared drive file storage
 - update "WEEK N" and "MONTH/YYYY" cells on ledger creation/update
 - add ability to update ledger title and description
 - sort typeData by accountName
@@ -31,8 +30,6 @@ Contributors welcomed!
 
 ### - Google client API
 
-- use `emailVerified`
-- no longer need access token due to shared folder and reader access
 - remove access token storage/retrieval in lieu of revalidate()
 
 ## 🚀 Features
@@ -92,7 +89,7 @@ npm install
    - Configure Firebase SDK credentials
 
 4. Set up server files:
-   - Create `server/.env.local` with your environment variables
+   - Create `server/.env.local` with your environment variables, including `FIREBASE_PROJECT_ID` (used to verify Firebase ID tokens on the Drive/Sheets proxy routes)
    - Create `server/service-account-key.json` with your Google Service Account key
    - Install server dependencies: npm install
 
@@ -111,7 +108,7 @@ npm run dev
 ### Vercel
 
 1. Import git repository
-1. Add local and server env variables
+1. Add local and server env variables, including `FIREBASE_PROJECT_ID`
 1. Convert JSON key into base64 env variable and add to vercel
    - `base64 -i server/service-account-key.json -o service-account-key-base64.txt`
 

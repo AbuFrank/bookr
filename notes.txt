@@ -1,3 +1,32 @@
+# Code TODOs (swept 2026-07-29)
+
++ server/googleDriveRoutes.js:19 - remove /auth/google route in lieu of shared drive file storage -- removed; was dead code (undefined oauth2Client), superseded by service-account model
++ src/lib/googleDriveClient.ts:121 (was) - use `emailVerified` -- server now rejects unverified emails in getAuthenticatedEmail (server/firebaseAuth.js)
+- server/google-auth.js:138 - update "WEEK N" and "MONTH/YYYY" cells
+- server/google-auth.js:152 - use value - 1 to adjust for 0-indexed for convenience here
++ server/google-auth.js:213 - verify user email matches email on file metadata -- done via assertAuthorizedForFileIds (see below)
+- src/PageTransactions.tsx:172 - create more robust error management and form requirements
+- src/PageTransactions.tsx:282 - add a isSynced state to the ledger when state changes (transaction and ledger info) that is removed when the update ledger button is pressed
+- src/PageTransactions.tsx:283 - also hide button when isSynced is true
+- src/PageTransactions.tsx:284 - prevent navigating away if isSynced === false
+- src/PageTransactions.tsx:368 - change conditional explicit check and error message accordingly
+- src/components/ReportTrigger.tsx:41 - update all current ledgers in firestore and re-set current ledger state
+- src/components/ReportTrigger.tsx:43 - create updateLedger function
+- src/components/ReportTrigger.tsx:44 - actually only keep starting total for the given year folder and use that to recalculate running total instead of having to update every ledger
+- src/components/ProtectedRoute.tsx:25 - Role
+- src/lib/googleDriveClient.ts:185 - remove access token storage/retrieval in lieu of revalidate() -- dead commented-out OAuth access-token code (getAccessToken/refreshAccessToken/storeAccessToken/clearAccessToken), separate from the ID-token auth added below
+- src/helpers/ledger.ts:106 - save calculated totals to each ledger in firestore
+- src/helpers/ledger.ts:107 - reduce loop down to only relevant updated ledgers
+- src/helpers/ledger.ts:110 - make sure accounts can't be used on different types
+- src/helpers/ledger.ts:203 - add error messaging for going over space allotment in file for each transaction type
+
+# Auth: verify who's submitting edits (2026-07-29)
+
++ Removed /auth/google (dead code, see above)
++ Added server/firebaseAuth.js - verifies the Firebase ID token on /folder, /copy-template, /update-sheets (Express routes and their api/*.js Vercel equivalents) via firebase-admin, and requires email_verified. Client (src/lib/googleDriveClient.ts) now sends `Authorization: Bearer <idToken>` instead of a client-supplied email in the body; /folder and /copy-template use the verified email for Drive reader-permission grants instead of trusting the request body.
++ Needs FIREBASE_PROJECT_ID env var (added to server/.env.local; also needs to be added to Vercel project env vars for production)
++ Added assertAuthorizedForFileIds/isEmailAuthorizedForFile (server/google-auth.js) - confirms the authenticated email already has Drive access (granted on create, via createFolder/copyTemplateFile) to every fileId/folderId a request references, via drive.permissions.list, before /folder (parentId, when given), /copy-template (parentFolderId), and /update-sheets (every fileId in the batch) do anything. No Firestore Admin credential needed - reuses the existing Drive service account and the reader-access-on-create model already in place. Fails closed (403) on any lookup error or missing permission; /update-sheets rejects the whole batch rather than partially applying it.
+
 # Questions
 
 1. Do we want each ledger as a tab in one spreadsheet or spread out through multiple spreadsheets
@@ -41,5 +70,3 @@
 + Add memo field and show it below payment to/from cell
 + Add dates to the cells for income and non-income deposits
 + remove accounts for deposits and list chronologically
-
-+ update firestore rules to use userId -- firestore.rules written and in repo, still needs to be pasted into the Firebase console manually (no firebase.json/CLI deploy set up)

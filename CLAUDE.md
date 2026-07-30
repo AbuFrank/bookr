@@ -22,11 +22,11 @@ npm run test:watch    # vitest watch mode
 
 ### Tests
 
-Vitest, configured in `vite.config.ts` (`test.include`: `src/**/*.test.{ts,tsx}`, `server/**/*.test.js`, `api/**/*.test.js`). 108 tests across 12 files as of this writing — reducers, `helpers/{ledger,folders,date,transactions}`, `lib/firestore`, `types/spreadsheetTypes`, `server/google-auth`, and `api/routeParity.test.js`. That last one drives both `server/googleDriveRoutes.js` and the matching `api/*.js` handler with the same mocked `server/google-auth.js` and asserts identical status codes/bodies — it's the guardrail for the "keep both call sites in sync" rule below, so a signature or error-handling change to one side that isn't mirrored on the other will fail it.
+Vitest, configured in `vite.config.ts` (`test.include`: `src/**/*.test.{ts,tsx}`, `server/**/*.test.js`, `api/**/*.test.js`). 133 tests across 13 files as of this writing — reducers, `helpers/{ledger,folders,date,transactions}`, `lib/firestore`, `types/spreadsheetTypes`, `server/google-auth`, `server/firebaseAuth`, and `api/routeParity.test.js`. That last one drives both `server/googleDriveRoutes.js` and the matching `api/*.js` handler with the same mocked `server/google-auth.js` (and a mocked `server/firebaseAuth.js#getAuthenticatedEmail`, so it can assert both sides' 401/403/403-ownership handling matches without exercising real token verification or Drive calls) and asserts identical status codes/bodies — it's the guardrail for the "keep both call sites in sync" rule below, so a signature or error-handling change to one side that isn't mirrored on the other will fail it.
 
 ### Local server setup
 
-The Express server needs `server/.env.local` (`GOOGLE_TEMPLATE_ID`, `GOOGLE_SOURCE_ID`, `GOOGLE_PARENT_FOLDER_ID`) and a `server/cfcc-service-account-key.json` Google service-account key. In production (Vercel), the key comes from `GOOGLE_SERVICE_ACCOUNT_KEY_BASE64` instead (base64-encoded JSON) — see `getServiceAccountDrive()` in `server/google-auth.js`.
+The Express server needs `server/.env.local` (`GOOGLE_TEMPLATE_ID`, `GOOGLE_SOURCE_ID`, `GOOGLE_PARENT_FOLDER_ID`, `FIREBASE_PROJECT_ID`) and a `server/cfcc-service-account-key.json` Google service-account key. In production (Vercel), the key comes from `GOOGLE_SERVICE_ACCOUNT_KEY_BASE64` instead (base64-encoded JSON) — see `getServiceAccountDrive()` in `server/google-auth.js`. `FIREBASE_PROJECT_ID` (the Firebase project id, e.g. `bookr-905fd` — distinct from the GCP project backing the Drive/Sheets service account key, e.g. `bookr-493319`) must also be set in Vercel's env vars for production; it's used by `server/firebaseAuth.js` to verify Firebase ID tokens and doesn't need a credential of its own.
 
 ## Architecture
 
@@ -75,7 +75,11 @@ Keep both call sites in sync when changing the shared `server/google-auth.js` fu
 
 ### Auth
 
-Firebase Google Sign-In (`firebase/authService.ts`, `firebase/firebase.ts`). The Drive/Sheets calls are *not* authenticated as the end user — a single service account (shared via `GOOGLE_PARENT_FOLDER_ID`) owns all files and grants the user's email `reader` access after creating/copying each file. `googleDriveAPI` (`lib/googleDriveClient.ts`) tracks the current Firebase user only to attach their email to API calls, not for token auth.
+Firebase Google Sign-In (`firebase/authService.ts`, `firebase/firebase.ts`). The Drive/Sheets calls are *not* authenticated as the end user — a single service account (shared via `GOOGLE_PARENT_FOLDER_ID`) owns all files and grants the user's email `reader` access after creating/copying each file.
+
+Every request to `POST /folder`, `POST /copy-template`, and `PUT /update-sheets` (both `server/googleDriveRoutes.js` and the `api/*.js` equivalents) must carry an `Authorization: Bearer <Firebase ID token>` header — `googleDriveAPI` (`lib/googleDriveClient.ts`) attaches it via `currentUser.getIdToken()`. The server verifies it with `getAuthenticatedEmail()` in `server/firebaseAuth.js` (using `firebase-admin`'s `verifyIdToken`, which needs only `FIREBASE_PROJECT_ID` — no service-account credential, since it just checks the token's signature/`aud` against Google's public certs) before doing anything else; an unverified or unverified-email token gets a 401/403 and the route body is never reached. `/folder` and `/copy-template` use the verified email (not a client-supplied one) when granting Drive `reader` access, closing off spoofing a different email than the one actually logged in.
+
+Beyond just being *some* logged-in user, each route also has to actually own the Drive resource it's referencing — `assertAuthorizedForFileIds()` in `server/google-auth.js` checks (via `drive.permissions.list`) that the authenticated email is already a permission on the id(s) in question, since that's exactly the reader access `createFolder`/`copyTemplateFile` grant on creation; no separate ownership record needed. `/folder` checks `parentId` when one is given (skipped for the top-level per-user root folder, which has none), `/copy-template` checks `parentFolderId`, and `/update-sheets` checks every `fileId` in the batch before writing any of them. A failure throws a 403 naming the offending id and the batch is fully rejected, not partially applied.
 
 ### Firestore security rules
 
@@ -83,7 +87,6 @@ Firebase Google Sign-In (`firebase/authService.ts`, `firebase/firebase.ts`). The
 
 ## Known rough edges (see `notes.txt`, `changelog.md`)
 
-- `/auth/google` OAuth route in `googleDriveRoutes.js` is dead code left over from a prior per-user-token auth flow (references an undefined `oauth2Client`); the app now uses the shared service account instead.
 - Ledger/ledger-total recalculation re-walks every ledger in a fiscal year on every sync; there's no persisted running total on the ledger doc yet (see the `TODO`s in `calculateAccountTotals`, `helpers/ledger.ts`).
 - `updateSpreadsheet` (`server/google-auth.js`) swallows its own errors (`catch` logs and returns `undefined` instead of rethrowing), so a failed sheet write shows up as `{ success: false, data: undefined }` in the `/update-sheets` response rather than an HTTP error — callers must check `success` per-index, not just the overall request status.
 - `notes.txt` is the running scratch todo list (`+` = done, `-` = open) plus open questions from the user about spreadsheet layout; check it before starting new ledger/UI work, and update it (don't just leave stale `-` items) as todos are completed.

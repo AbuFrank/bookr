@@ -105,6 +105,42 @@ export const createFolder = async (name, userEmail, sharedFolderId, parentId) =>
   }
 }
 
+// Whether email has been granted Drive access to fileId - i.e. whether it's the email a
+// prior createFolder/copyTemplateFile call granted 'reader' permission to. Used as the
+// server's proxy for "does this user own this folder/ledger", since there's no separate
+// ownership record the server can check without a Firestore Admin credential of its own.
+export const isEmailAuthorizedForFile = async (fileId, email) => {
+  try {
+    const { drive } = getServiceAccountDrive();
+    const response = await drive.permissions.list({
+      fileId,
+      supportsAllDrives: true,
+      fields: 'permissions(emailAddress,role)',
+    });
+    const permissions = response.data.permissions || [];
+    return permissions.some(
+      (permission) => permission.emailAddress?.toLowerCase() === email.toLowerCase()
+    );
+  } catch (error) {
+    console.error(`Error checking permissions for file ${fileId}:`, error);
+    return false;
+  }
+};
+
+// Confirms email is authorized (see isEmailAuthorizedForFile) for every id in fileIds,
+// throwing a 403 naming the first one that isn't - so a caller can't reference another
+// user's folder or ledger just by knowing/guessing its Drive id. Fails closed: a lookup
+// error is treated the same as "not authorized".
+export const assertAuthorizedForFileIds = async (fileIds, email) => {
+  const results = await Promise.all(fileIds.map((fileId) => isEmailAuthorizedForFile(fileId, email)));
+  const unauthorizedIndex = results.findIndex((authorized) => !authorized);
+  if (unauthorizedIndex !== -1) {
+    const error = new Error(`Not authorized for file ${fileIds[unauthorizedIndex]}`);
+    error.statusCode = 403;
+    throw error;
+  }
+};
+
 export const copyTemplateFile = async (templateId, fileName, userEmail, parentFolderId, description) => {
   try {
     const { drive } = getServiceAccountDrive();

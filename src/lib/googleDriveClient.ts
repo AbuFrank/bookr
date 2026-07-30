@@ -55,16 +55,17 @@ const googleDriveAPI: GoogleDriveAPI = {
         throw new Error('Missing user email')
       }
 
+      const idToken = await currentUser.getIdToken();
+
       const response = await fetch('/api/folder', {
         method: 'POST',
         headers: {
-          // 'Authorization': `Bearer ${accessToken}`,
+          'Authorization': `Bearer ${idToken}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           name: modifiedName,
           parentId,
-          userEmail: currentUser?.email,
         })
       });
 
@@ -115,11 +116,6 @@ const googleDriveAPI: GoogleDriveAPI = {
 
   async copyReportTemplate(parentFolderId: string, fileName: string, description: string): Promise<DriveFile> {
     try {
-      // const accessToken = await googleDriveAPI.getAccessToken();
-      // const accessToken = await getAccessTokenWithRefresh()
-
-      // TODO use `emailVerified`
-
       if (!fileName) {
         throw new Error('Missing file name')
       }
@@ -128,15 +124,16 @@ const googleDriveAPI: GoogleDriveAPI = {
         throw new Error('Missing user email')
       }
 
+      const idToken = await currentUser.getIdToken();
+
       const response = await fetch('/api/copy-template', {
         method: 'POST',
         headers: {
-          // 'Authorization': `Bearer ${accessToken}`,
+          'Authorization': `Bearer ${idToken}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           fileName,
-          email: currentUser?.email,
           parentFolderId,
           description
         })
@@ -160,11 +157,16 @@ const googleDriveAPI: GoogleDriveAPI = {
 
   async updateSheetCells(updates: Update[]) {
     try {
-      // TODO no longer need access token due to shared folder and reader access
+      if (!currentUser) {
+        throw new Error('No authenticated user found');
+      }
+
+      const idToken = await currentUser.getIdToken();
+
       const response = await fetch(`/api/update-sheets`, {
         method: 'PUT',
         headers: {
-          // 'Authorization': `Bearer ${accessToken}`,
+          'Authorization': `Bearer ${idToken}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({

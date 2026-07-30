@@ -1,4 +1,5 @@
-import { copyTemplateFile } from '../server/google-auth.js';
+import { copyTemplateFile, assertAuthorizedForFileIds } from '../server/google-auth.js';
+import { getAuthenticatedEmail } from '../server/firebaseAuth.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -6,7 +7,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { fileName, email, parentFolderId, description } = req.body;
+    const { fileName, parentFolderId, description } = req.body;
 
     const templateId = process.env.GOOGLE_TEMPLATE_ID
 
@@ -18,9 +19,9 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Must provide parent folder ID' });
     }
 
-    if (!email) {
-      return res.status(400).json({ error: 'User email required' });
-    }
+    const email = await getAuthenticatedEmail(req);
+
+    await assertAuthorizedForFileIds([parentFolderId], email);
 
     const sharedFolderId = process.env.GOOGLE_PARENT_FOLDER_ID;
     const result = await copyTemplateFile(
@@ -34,6 +35,9 @@ export default async function handler(req, res) {
     res.status(200).json(result);
   } catch (error) {
     console.error('Error copying file:', error);
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({ error: error.message });
+    }
     if (error.code === 400) {
       return res.status(400).json({ error: 'Invalid request parameters' });
     }

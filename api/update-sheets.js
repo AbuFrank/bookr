@@ -1,4 +1,5 @@
-import { updateSpreadsheet } from '../server/google-auth.js';
+import { updateSpreadsheet, assertAuthorizedForFileIds } from '../server/google-auth.js';
+import { getAuthenticatedEmail } from '../server/firebaseAuth.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'PUT') {
@@ -11,6 +12,10 @@ export default async function handler(req, res) {
     if (!updates || !Array.isArray(updates)) {
       return res.status(400).json({ error: 'Invalid updates format' });
     }
+
+    const email = await getAuthenticatedEmail(req);
+
+    await assertAuthorizedForFileIds(updates.map(({ fileId }) => fileId), email);
 
     // Process all updates
     const responses = await Promise.all(
@@ -28,6 +33,9 @@ export default async function handler(req, res) {
     res.status(200).json(results);
   } catch (error) {
     console.error('Error updating sheets:', error);
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({ error: error.message });
+    }
     if (error.code === 400) {
       return res.status(400).json({ error: 'Invalid request parameters' });
     }

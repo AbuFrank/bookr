@@ -1,5 +1,6 @@
 import express from 'express';
-import { copySheetToTemplate, copyTemplateFile, createFolder, updateSpreadsheet } from './google-auth.js';
+import { copySheetToTemplate, copyTemplateFile, createFolder, updateSpreadsheet, assertAuthorizedForFileIds } from './google-auth.js';
+import { getAuthenticatedEmail } from './firebaseAuth.js';
 import path from 'path';
 
 const router = express.Router();
@@ -16,48 +17,28 @@ const templateId = process.env.GOOGLE_TEMPLATE_ID
 const sourceTemplateId = process.env.GOOGLE_SOURCE_ID
 const sharedFolderId = process.env.GOOGLE_PARENT_FOLDER_ID
 
-// TODO remove /auth/google route in lieu of shared drive file storage
-// Route to initiate Google OAuth2 flow
-router.get('/auth/google', (req, res) => {
-  try {
-    const url = oauth2Client.generateAuthUrl({
-      access_type: 'offline',
-      scope: [
-        'https://www.googleapis.com/auth/drive',
-        'https://www.googleapis.com/auth/drive.file'
-      ],
-      prompt: 'consent'
-    });
-
-    // Redirect user to Google OAuth2 consent page
-    res.redirect(url);
-  } catch (error) {
-    console.error('Error generating auth URL:', error);
-    res.status(500).json({
-      error: 'Failed to generate authorization URL',
-      message: error.message
-    });
-  }
-});
-
 // Create folder for the user
 router.post('/folder', async (req, res) => {
   try {
-    const { name, parentId, userEmail } = req.body;
+    const { name, parentId } = req.body;
 
     if (!name) {
       return res.status(400).json({ error: 'Must provide a name' });
     }
 
+    const userEmail = await getAuthenticatedEmail(req);
 
-    if (!userEmail) {
-      return res.status(400).json({ error: 'Must provide user email' });
+    if (parentId) {
+      await assertAuthorizedForFileIds([parentId], userEmail);
     }
 
     const folderData = await createFolder(name, userEmail, sharedFolderId, parentId)
     res.json(folderData);
   } catch (error) {
     console.error('Error creating folder:', error?.response || error);
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({ error: error.message });
+    }
     if (error?.message?.includes("Request had invalid authentication credentials.")) {
       return res.status(401).json({ error: 'Invalid Token' })
     }
@@ -68,7 +49,7 @@ router.post('/folder', async (req, res) => {
 // Copy file from template to user's drive
 router.post('/copy-template', async (req, res) => {
   try {
-    const { fileName, email, parentFolderId, description } = req.body;
+    const { fileName, parentFolderId, description } = req.body;
 
     if (!templateId) {
       return res.status(400).json({ error: 'No template file found.' });
@@ -78,11 +59,9 @@ router.post('/copy-template', async (req, res) => {
       return res.status(400).json({ error: 'Must provide a parent folder id.' });
     }
 
-    if (!email) {
-      return res.status(400).json({
-        error: 'user email is required'
-      });
-    }
+    const email = await getAuthenticatedEmail(req);
+
+    await assertAuthorizedForFileIds([parentFolderId], email);
 
     const result = await copyTemplateFile(
       templateId,
@@ -95,6 +74,9 @@ router.post('/copy-template', async (req, res) => {
     res.json(result)
   } catch (error) {
     console.error('Error copying file:', error);
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({ error: error.message });
+    }
     if (error.code === 400) {
       return res.status(400).json({ error: 'Invalid request parameters' });
     }
@@ -157,6 +139,10 @@ router.put('/update-sheets', async (req, res) => {
       return res.status(400).json({ error: 'Invalid updates format' });
     }
 
+    const email = await getAuthenticatedEmail(req);
+
+    await assertAuthorizedForFileIds(updates.map(({ fileId }) => fileId), email);
+
     // update each corresponding spreadsheet file provided by the update data
     const responses = await Promise.all(
       updates.map(({ fileId, transactions, ...allUpdates }) => updateSpreadsheet(fileId, transactions, allUpdates))
@@ -172,6 +158,9 @@ router.put('/update-sheets', async (req, res) => {
 
   } catch (error) {
     console.error('Error updating sheet:', error);
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({ error: error.message });
+    }
     // Handle specific Google API errors
     if (error.code === 400) {
       return res.status(400).json({ error: 'Invalid request parameters' });

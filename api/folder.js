@@ -1,4 +1,5 @@
-import { createFolder } from '../server/google-auth.js';
+import { createFolder, assertAuthorizedForFileIds } from '../server/google-auth.js';
+import { getAuthenticatedEmail } from '../server/firebaseAuth.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -6,14 +7,16 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { name, parentId, userEmail } = req.body;
+    const { name, parentId } = req.body;
 
     if (!name) {
       return res.status(400).json({ error: 'Must provide a name' });
     }
 
-    if (!userEmail) {
-      return res.status(400).json({ error: 'Must provide user email' });
+    const userEmail = await getAuthenticatedEmail(req);
+
+    if (parentId) {
+      await assertAuthorizedForFileIds([parentId], userEmail);
     }
 
     const sharedFolderId = process.env.GOOGLE_PARENT_FOLDER_ID;
@@ -22,6 +25,9 @@ export default async function handler(req, res) {
     res.status(200).json(folderData);
   } catch (error) {
     console.error('Error creating folder:', error);
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({ error: error.message });
+    }
     if (error?.message?.includes("Request had invalid authentication credentials.")) {
       return res.status(401).json({ error: 'Invalid Token' });
     }

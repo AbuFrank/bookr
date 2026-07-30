@@ -21,6 +21,7 @@
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
     "firebase": "^12.8.0",
+    "firebase-admin": "^14.2.0",
     "googleapis": "^171.4.0",
     "lucide-react": "^0.562.0",
     "react": "^19.2.0",
