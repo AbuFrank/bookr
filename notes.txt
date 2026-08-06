@@ -34,6 +34,10 @@
 1. Do you still want the running list to be included in the spreadsheet or is it okay just in the app (for printing purposes)
 1. [Resolved] Deposits/Non-Income Deposits list transactions chronologically (date/payee/amount), no account grouping. Expenses/Non-Deductible Expenses stay grouped by account, placed on a fixed row by accountNumber (Deductible: 1-49, Non-Deductible: 50-56).
 
+- List created accounts my account number
+- Should G spreadsheet get updated on every edit? (avoids the "redundancy for users to 'save' changes)
+- Make "Update Report" always clickable even when grayed out because the app can't truly no if it's on par with google sheet.
+
 # Second session
 
 + Fix starting amount not showing in new ledger
