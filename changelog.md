@@ -1,5 +1,15 @@
 # Changelog
 
+## August 5, 2026
+
+- Fix Vercel production crashing with `ERR_REQUIRE_ESM` on every route that loads `server/firebaseAuth.js` (`/folder`, `/copy-template`, `/update-sheets`): `firebase-admin` depends on `jwks-rsa@4.1.0`, which bumped its own `jose` dependency to an ESM-only `^6` release with no CommonJS build, breaking `jwks-rsa`'s plain `require('jose')`. Pinned `jose` to `^5.10.0` (last version with a CJS build) for `jwks-rsa` via an npm `overrides` entry in `package.json`.
+- Make "Update Report" always clickable instead of `disabled` once there are no unsaved changes, so a sync can still be manually re-triggered (e.g. after a partial-failure sync the app can't fully verify is resolved) — it still reads as grayed-out/inactive when `hasUnsavedReportChanges` is false, just no longer blocks the click (`ReportTrigger.tsx`).
+
+## July 30, 2026
+
+- Refactor `server/firebaseAuth.js` to import `initializeApp`/`getApps` from `firebase-admin/app` and `getAuth` from `firebase-admin/auth` instead of the `firebase-admin` default export; log the underlying error via `console.error` before flattening a failed `verifyIdToken` call to the generic 401 `Invalid or expired token`, so the real cause is at least visible in server logs even though it's not surfaced to the client.
+- Add a `firestore.rules` match for `/users/{userId}` docs (created/read on every sign-in by `authService.ts#signInWithGoogle`), scoped by `isOwner(userId)` — previously outside any rule since it isn't part of the userId-scoped-by-field collections the rest of the rules cover.
+
 ## July 29, 2026
 
 - Remove the dead `/auth/google` route (`server/googleDriveRoutes.js`) and add real identity verification to the Drive/Sheets proxy routes: `/folder`, `/copy-template`, and `/update-sheets` (both the Express routes and their `api/*.js` Vercel equivalents) now require an `Authorization: Bearer <Firebase ID token>` header, verified server-side by new `server/firebaseAuth.js#getAuthenticatedEmail()` (via `firebase-admin`, requires a new `FIREBASE_PROJECT_ID` env var — no service-account credential needed for token verification). Previously these routes trusted whatever `userEmail`/`email` the client put in the request body with no proof it came from the logged-in user; `/folder` and `/copy-template` now use the verified token's email for the Drive reader-permission grant instead. `lib/googleDriveClient.ts` now attaches the ID token via `currentUser.getIdToken()` instead of sending the email in the body.

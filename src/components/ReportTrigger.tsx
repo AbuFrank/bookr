@@ -64,8 +64,12 @@ const ReportTrigger: React.FC = () => {
         )}
         <button
           onClick={handleUpdateValues}
-          disabled={!isAuthenticated || isProcessing || !hasUnsavedReportChanges}
-          className="px-6 py-3 rounded-md font-medium bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
+          disabled={!isAuthenticated || isProcessing}
+          className={`px-6 py-3 rounded-md font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200 disabled:cursor-not-allowed ${
+            hasUnsavedReportChanges
+              ? 'bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 disabled:bg-gray-300 disabled:text-gray-500'
+              : 'bg-gray-300 text-gray-500 hover:bg-gray-400 active:bg-gray-400'
+          }`}
         >
           {isProcessing ? 'Updating...' : 'Update Report'}
         </button>
